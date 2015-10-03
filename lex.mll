@@ -36,6 +36,7 @@ rule lexer = parse
 | "do"              { DO }
 | "fork"            { FORK }
 | "join"            { JOIN }
+| "return"          { RETURN }
 | identifier as id  { ID(id) }
 | "+"               { PLUS }
 | "-"               { MINUS }

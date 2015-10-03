@@ -23,3 +23,6 @@ setup.log
 parse.ml
 parse.mli
 lex.ml
+
+# executables
+interp

@@ -32,7 +32,8 @@ type cmd =
 | Seq of cmd * cmd
 | If of bexp * cmd * cmd
 | While of bexp * cmd
-| Fork of cmd
+| Fork of var * cmd
 | Join of aexp
+| Return of aexp
 
 type program = cmd

@@ -38,6 +38,7 @@ let parse_error s =
 %token ASSIGN
 %token LBRACE RBRACE LPAREN RPAREN 
 %token SEMICOLON
+%token RETURN
 
 %right IF THEN ELSE
 %right WHILE DO
@@ -81,6 +82,7 @@ cmd:
   | ID ASSIGN aexp              { Ast.Assign($1, $3) }
   | IF bexp THEN cmd ELSE cmd   { Ast.If($2, $4, $6) }
   | WHILE bexp DO cmd           { Ast.While($2, $4) }
-  | FORK cmd                    { Ast.Fork($2) }
+  | FORK ID cmd                 { Ast.Fork($2, $3) }
   | JOIN aexp                   { Ast.Join($2) }
   | cmd SEMICOLON cmd           { Ast.Seq($1, $3) }
+  | RETURN aexp                 { Ast.Return($2) }
