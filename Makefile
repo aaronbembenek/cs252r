@@ -9,7 +9,6 @@ yacc: com
 	$(COMPILER) -c parse.ml
 	ocamllex lex.mll
 	$(COMPILER) -c lex.ml
-	$(COMPILER) -c yacc.ml
 
 com:
 	$(COMPILER) -c ast.ml
