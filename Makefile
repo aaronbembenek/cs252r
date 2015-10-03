@@ -1,7 +1,7 @@
 COMPILER=ocamlc
 
-all:
-	$(COMPILER) -c ast.ml
+all: yacc
+	$(COMPILER) -c ast.cmo parse.cmo lex.cmo eval.cmo yacc.cmo
 
 yacc: com
 	ocamlyacc parse.mly
@@ -10,7 +10,10 @@ yacc: com
 	ocamllex lex.mll
 	$(COMPILER) -c lex.ml
 	$(COMPILER) -c yacc.ml
-	$(COMPILER) -o cs252yacc ast.cmo parse.cmo lex.cmo eval.cmo yacc.cmo
+
+com:
+	$(COMPILER) -c ast.ml
+	$(COMPILER) -c eval.ml
 
 # need to add executables
 clean:

@@ -34,3 +34,5 @@ type cmd =
 | While of bexp * cmd
 | Fork of cmd
 | Join of aexp
+
+type program = cmd
