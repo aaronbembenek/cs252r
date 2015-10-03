@@ -56,7 +56,7 @@ program:
   cmd EOF	{ $1 }
 
 aexp:
-	  ID                  { (Ast.Var($1), (rhs 1)) }
+    ID                  { (Ast.Var($1), (rhs 1)) }
 	| INT                 { (Ast.Int($1), (rhs 1)) }
 	| aexp PLUS aexp      { (Ast.Binop($1, Ast.Add, $3), (rhs 2)) }
 	| aexp MINUS aexp     { (Ast.Binop($1, Ast.Sub, $3), (rhs 2)) }
@@ -65,7 +65,7 @@ aexp:
 	| LPAREN aexp RPAREN  { ($2) }
 
 bexp:
-		TRUE            { (Ast.True, (rhs 1)) }
+    TRUE            { (Ast.True, (rhs 1)) }
 	| FALSE           { (Ast.False, (rhs 1)) }
 	| bexp EQ bexp    { (Ast.Cmp($1, Ast.Eq, $3), (rhs 2)) }
 	| bexp NEQ bexp   { (Ast.Cmp($1, Ast.Neq, $3), (rhs 2)) }
@@ -77,7 +77,7 @@ bexp:
 	| bexp OR bexp    { (Ast.Or($1, $3), (rhs 2)) }
 
 cmd:
-		SKIP                        { (Ast.Skip, (rhs 1)) }
+    SKIP                        { (Ast.Skip, (rhs 1)) }
 	| aexp ASSIGN aexp            { (Ast.Assign($1, $3), (rhs 2)) }
 	| IF bexp THEN cmd ELSE cmd   { (Ast.If($2, $4, $6), (rhs 1)) }
 	| WHILE bexp DO cmd           { (Ast.While($2, $4), (rhs 1)) }
