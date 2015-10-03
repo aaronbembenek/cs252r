@@ -53,34 +53,34 @@ let parse_error s =
 %%
 
 program:
-  cmd EOF	{ $1 }
+  cmd EOF  { $1 }
 
 aexp:
     ID                  { (Ast.Var($1), (rhs 1)) }
-	| INT                 { (Ast.Int($1), (rhs 1)) }
-	| aexp PLUS aexp      { (Ast.Binop($1, Ast.Add, $3), (rhs 2)) }
-	| aexp MINUS aexp     { (Ast.Binop($1, Ast.Sub, $3), (rhs 2)) }
-	| aexp TIMES aexp     { (Ast.Binop($1, Ast.Mul, $3), (rhs 2)) }
-	| aexp DIVIDE aexp    { (Ast.Binop($1, Ast.Div, $3), (rhs 2)) }
-	| LPAREN aexp RPAREN  { ($2) }
+  | INT                 { (Ast.Int($1), (rhs 1)) }
+  | aexp PLUS aexp      { (Ast.Binop($1, Ast.Add, $3), (rhs 2)) }
+  | aexp MINUS aexp     { (Ast.Binop($1, Ast.Sub, $3), (rhs 2)) }
+  | aexp TIMES aexp     { (Ast.Binop($1, Ast.Mul, $3), (rhs 2)) }
+  | aexp DIVIDE aexp    { (Ast.Binop($1, Ast.Div, $3), (rhs 2)) }
+  | LPAREN aexp RPAREN  { ($2) }
 
 bexp:
     TRUE            { (Ast.True, (rhs 1)) }
-	| FALSE           { (Ast.False, (rhs 1)) }
-	| bexp EQ bexp    { (Ast.Cmp($1, Ast.Eq, $3), (rhs 2)) }
-	| bexp NEQ bexp   { (Ast.Cmp($1, Ast.Neq, $3), (rhs 2)) }
-	| bexp LT bexp    { (Ast.Cmp($1, Ast.Lt, $3), (rhs 2)) }
-	| bexp LTE bexp   { (Ast.Cmp($1, Ast.Lte, $3), (rhs 2)) }
-	| bexp GT bexp    { (Ast.Cmp($1, Ast.Gt, $3), (rhs 2)) }
-	| bexp GTE bexp   { (Ast.Cmp($1, Ast.Gte, $3), (rhs 2)) }
-	| bexp AND bexp   { (Ast.And($1, $3), (rhs 2)) }
-	| bexp OR bexp    { (Ast.Or($1, $3), (rhs 2)) }
+  | FALSE           { (Ast.False, (rhs 1)) }
+  | bexp EQ bexp    { (Ast.Cmp($1, Ast.Eq, $3), (rhs 2)) }
+  | bexp NEQ bexp   { (Ast.Cmp($1, Ast.Neq, $3), (rhs 2)) }
+  | bexp LT bexp    { (Ast.Cmp($1, Ast.Lt, $3), (rhs 2)) }
+  | bexp LTE bexp   { (Ast.Cmp($1, Ast.Lte, $3), (rhs 2)) }
+  | bexp GT bexp    { (Ast.Cmp($1, Ast.Gt, $3), (rhs 2)) }
+  | bexp GTE bexp   { (Ast.Cmp($1, Ast.Gte, $3), (rhs 2)) }
+  | bexp AND bexp   { (Ast.And($1, $3), (rhs 2)) }
+  | bexp OR bexp    { (Ast.Or($1, $3), (rhs 2)) }
 
 cmd:
     SKIP                        { (Ast.Skip, (rhs 1)) }
-	| aexp ASSIGN aexp            { (Ast.Assign($1, $3), (rhs 2)) }
-	| IF bexp THEN cmd ELSE cmd   { (Ast.If($2, $4, $6), (rhs 1)) }
-	| WHILE bexp DO cmd           { (Ast.While($2, $4), (rhs 1)) }
-	| FORK cmd                    { (Ast.Fork($2), (rhs 1)) }
-	| JOIN aexp                   { (Ast.Join($2), (rhs 1)) }
-	| cmd SEMICOLON cmd           { (Ast.Seq($1, $3), (rhs 2)) }
+  | aexp ASSIGN aexp            { (Ast.Assign($1, $3), (rhs 2)) }
+  | IF bexp THEN cmd ELSE cmd   { (Ast.If($2, $4, $6), (rhs 1)) }
+  | WHILE bexp DO cmd           { (Ast.While($2, $4), (rhs 1)) }
+  | FORK cmd                    { (Ast.Fork($2), (rhs 1)) }
+  | JOIN aexp                   { (Ast.Join($2), (rhs 1)) }
+  | cmd SEMICOLON cmd           { (Ast.Seq($1, $3), (rhs 2)) }
