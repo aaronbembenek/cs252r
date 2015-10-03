@@ -47,7 +47,6 @@ rule lexer = parse
 | "<=" 							{ LTE }
 | ">" 							{ GT }
 | ">="							{ GTE }
-| "!" 							{ NOT }
 | "&&" 							{ AND }
 | "||" 							{ OR }
 | "=" 							{ ASSIGN }

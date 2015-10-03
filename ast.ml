@@ -32,3 +32,5 @@ type cmd =
 | Seq of cmd * cmd
 | If of bexp * cmd * cmd
 | While of bexp * cmd
+| Fork of cmd
+| Join of aexp
