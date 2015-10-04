@@ -30,10 +30,12 @@ rule lexer = parse
 | "false"           { FALSE }
 | "skip"            { SKIP }
 | "if"              { IF }
+| "fi"              { FI }
 | "then"            { THEN }
 | "else"            { ELSE }
 | "while"           { WHILE }
 | "do"              { DO }
+| "done"            { DONE }
 | "fork"            { FORK }
 | "join"            { JOIN }
 | "return"          { RETURN }

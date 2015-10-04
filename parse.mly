@@ -28,7 +28,7 @@ let parse_error s =
 %token <string> ID
 %token TRUE FALSE
 %token SKIP
-%token IF THEN ELSE
+%token IF THEN ELSE FI
 %token WHILE DO
 %token FORK JOIN
 %token PLUS MINUS
@@ -39,9 +39,10 @@ let parse_error s =
 %token LBRACE RBRACE LPAREN RPAREN 
 %token SEMICOLON
 %token RETURN
+%token DONE
 
-%right IF THEN ELSE
-%right WHILE DO
+%right IF THEN ELSE FI
+%right WHILE DO DONE
 %right FORK JOIN
 %left PLUS MINUS
 %left TIMES DIVIDE
@@ -78,11 +79,11 @@ bexp:
   | bexp OR bexp    { Ast.Or($1, $3) }
 
 cmd:
-    SKIP                        { Ast.Skip }
-  | ID ASSIGN aexp              { Ast.Assign($1, $3) }
-  | IF bexp THEN cmd ELSE cmd   { Ast.If($2, $4, $6) }
-  | WHILE bexp DO cmd           { Ast.While($2, $4) }
-  | FORK ID cmd                 { Ast.Fork($2, $3) }
-  | JOIN aexp                   { Ast.Join($2) }
-  | cmd SEMICOLON cmd           { Ast.Seq($1, $3) }
-  | RETURN aexp                 { Ast.Return($2) }
+    SKIP                          { Ast.Skip }
+  | ID ASSIGN aexp                { Ast.Assign($1, $3) }
+  | IF bexp THEN cmd ELSE cmd FI  { Ast.If($2, $4, $6) }
+  | WHILE bexp DO cmd DONE        { Ast.While($2, $4) }
+  | FORK ID DO cmd DONE           { Ast.Fork($2, $4) }
+  | JOIN aexp                     { Ast.Join($2) }
+  | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
+  | RETURN aexp                   { Ast.Return($2) }
