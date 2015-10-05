@@ -1,0 +1,18 @@
+x = 0;
+fork t1 do
+	while x < 10 do
+		x = x + 1;
+	done;
+done;
+
+y = 0;
+fork t2 do
+	while y < 5 do
+		y = y + 1;
+	done;
+done;
+
+join t1;
+join t2;
+
+return x + y;

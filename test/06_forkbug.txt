@@ -1,0 +1,15 @@
+fork t1 do
+	x = 0;
+	while x < 100 do
+		x = x + 1;
+	done;
+	return x;
+done;
+
+fork t2 do
+	y = 0;
+	while y < 95 do
+		y = y + 1;
+	done;
+	return y;
+done;

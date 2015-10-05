@@ -22,6 +22,7 @@ setup.log
 # parsing
 parse.ml
 parse.mli
+parse.output
 lex.ml
 
 # executables

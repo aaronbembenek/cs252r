@@ -89,4 +89,9 @@ let parse_file () =
 
 let _ =
   let prog = parse_file () in
-  exit (run prog)
+  let return_val = (run prog) in
+    (* Print result for testing. *)
+    print_int return_val;
+    print_string "\n";
+    (* Exit with return value. *)
+    exit return_val

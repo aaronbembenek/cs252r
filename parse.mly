@@ -67,16 +67,17 @@ aexp:
   | LPAREN aexp RPAREN  { ($2) }
 
 bexp:
-    TRUE            { Ast.True }
-  | FALSE           { Ast.False }
-  | aexp EQ aexp    { Ast.Cmp($1, Ast.Eq, $3) }
-  | aexp NEQ aexp   { Ast.Cmp($1, Ast.Neq, $3) }
-  | aexp LT aexp    { Ast.Cmp($1, Ast.Lt, $3) }
-  | aexp LTE aexp   { Ast.Cmp($1, Ast.Lte, $3) }
-  | aexp GT aexp    { Ast.Cmp($1, Ast.Gt, $3) }
-  | aexp GTE aexp   { Ast.Cmp($1, Ast.Gte, $3) }
-  | bexp AND bexp   { Ast.And($1, $3) }
-  | bexp OR bexp    { Ast.Or($1, $3) }
+    TRUE                { Ast.True }
+  | FALSE               { Ast.False }
+  | LPAREN bexp RPAREN  { ($2) }
+  | aexp EQ aexp        { Ast.Cmp($1, Ast.Eq, $3) }
+  | aexp NEQ aexp       { Ast.Cmp($1, Ast.Neq, $3) }
+  | aexp LT aexp        { Ast.Cmp($1, Ast.Lt, $3) }
+  | aexp LTE aexp       { Ast.Cmp($1, Ast.Lte, $3) }
+  | aexp GT aexp        { Ast.Cmp($1, Ast.Gt, $3) }
+  | aexp GTE aexp       { Ast.Cmp($1, Ast.Gte, $3) }
+  | bexp AND bexp       { Ast.And($1, $3) }
+  | bexp OR bexp        { Ast.Or($1, $3) }
 
 cmd:
     SKIP                          { Ast.Skip }
@@ -85,5 +86,7 @@ cmd:
   | WHILE bexp DO cmd DONE        { Ast.While($2, $4) }
   | FORK ID DO cmd DONE           { Ast.Fork($2, $4) }
   | JOIN aexp                     { Ast.Join($2) }
+  | LBRACE cmd RBRACE             { ($2) }
+  | cmd SEMICOLON                 { Ast.Seq($1, Ast.Skip) }
   | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
   | RETURN aexp                   { Ast.Return($2) }
