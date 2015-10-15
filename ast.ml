@@ -5,35 +5,31 @@ type binop =
 | Sub
 | Mul
 | Div
-
-type cmp =
-  Eq
+| Eq
 | Neq
 | Lt
 | Lte
 | Gt
 | Gte
+| And
+| Or
 
-type aexp =
-  Int of int
-| Var of var
-| Binop of aexp * binop * aexp
-
-type bexp =
-  True
-| False
-| Cmp of aexp * cmp * aexp
-| And of bexp * bexp
-| Or of bexp * bexp
+type exp =
+  Var of var
+| Sym of var
+| Conc of int
+| Binop of exp * binop * exp
 
 type cmd =
   Skip
-| Assign of var * aexp
+| Assign of var * exp
 | Seq of cmd * cmd
-| If of bexp * cmd * cmd
-| While of bexp * cmd
+| If of exp * cmd * cmd
+| While of exp * cmd
 | Fork of var * cmd
-| Join of aexp
-| Return of aexp
+| Join of exp
+| Lock of var
+| Unlock of var
+| Return of exp
 
 type program = cmd

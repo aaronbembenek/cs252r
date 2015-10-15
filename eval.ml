@@ -1,5 +1,6 @@
 open Ast
 
+exception TODO
 exception Done of int
 
 (* Map for variables with concrete bindings. *)
@@ -25,33 +26,26 @@ let is_thread_alive tid =
   with Not_found -> false
 let get_active_tids () = Hashtbl.fold (fun tid _ l -> tid :: l) threads []
 
-let rec eval_aexp (e : aexp) : int =
+let rec eval_exp (e : exp) : int =
   match e with
-    Int i -> i
+    Conc i -> i
+  | Sym x -> raise TODO
   | Var x -> !(lookup_cvars x)
   | Binop(e1,b,e2) ->
-      let (i1,i2) = (eval_aexp e1, eval_aexp e2) in
+      let (i1,i2) = (eval_exp e1, eval_exp e2) in
         match b with
           Add -> i1 + i2
         | Sub -> i1 - i2
         | Mul -> i1 * i2
         | Div -> i1 / i2
-
-let rec eval_bexp (e : bexp) : bool =
-  match e with
-    True -> true
-  | False -> false
-  | And(e1,e2) -> (eval_bexp e1) && (eval_bexp e2)
-  | Or(e1,e2) -> (eval_bexp e1) || (eval_bexp e2)
-  | Cmp(e1,cmp,e2) ->
-      let (i1,i2) = (eval_aexp e1, eval_aexp e2) in
-      match cmp with
-        Eq -> i1 == i2
-      | Neq -> i1 != i2
-      | Lt -> i1 < i2
-      | Lte -> i1 <= i2
-      | Gt -> i1 > i2
-      | Gte -> i1 >= i2
+        | Eq -> if i1 == i2 then 1 else 0
+        | Neq -> if i1 != i2 then 1 else 0
+        | Lt -> if i1 < i2 then 1 else 0
+        | Lte -> if i1 <= i2 then 1 else 0
+        | Gt -> if i1 > i2 then 1 else 0
+        | Gte -> if i1 >= i2 then 1 else 0
+        | And -> if (i1 != 0) && (i2 != 0) then 1 else 0
+        | Or -> if (i1 != 0) || (i2 != 0) then 1 else 0       
 
 let step_thread (tid : int) : unit =
   let cmds_ref = get_thread tid in
@@ -60,14 +54,16 @@ let step_thread (tid : int) : unit =
   | c :: cmds ->
     match c with
     | Skip -> cmds_ref := cmds
-    | Assign(x,e) -> let i = eval_aexp e in set_cvars x i; cmds_ref := cmds
+    | Assign(x,e) -> let i = eval_exp e in set_cvars x i; cmds_ref := cmds
     | Seq(c1,c2) -> cmds_ref := c1 :: c2 :: cmds
-    | If(b,c1,c2) -> let nxt_cmd = if (eval_bexp b) then c1 else c2 in cmds_ref := nxt_cmd :: cmds
+    | If(b,c1,c2) -> let nxt_cmd = if (eval_exp b != 0) then c1 else c2 in cmds_ref := nxt_cmd :: cmds
     | While(b,c') -> cmds_ref := If(b,Seq(c',c),Skip) :: cmds
     | Fork (x,c') ->
         let tid' = create_new_tid () in add_thread tid' c'; set_cvars x tid'; cmds_ref := cmds
-    | Join n -> if not (is_thread_alive (eval_aexp n)) then cmds_ref := cmds
-    | Return n -> raise (Done (eval_aexp n))
+    | Join n -> if not (is_thread_alive (eval_exp n)) then cmds_ref := cmds
+    | Lock n -> raise TODO
+    | Unlock n -> raise TODO
+    | Return n -> raise (Done (eval_exp n))
 
 let run (p : program) : int =
   let rec loop () =

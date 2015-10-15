@@ -18,8 +18,7 @@ let parse_error s =
 
 /* Specify the non-terminals of the grammar and the types of the values they build. */
 %type <Ast.program> program
-%type <Ast.aexp> aexp
-%type <Ast.bexp> bexp
+%type <Ast.exp> exp
 %type <Ast.cmd> cmd
 
 /* Give a definition of all of the terminals (i.e., tokens) in the grammar. */
@@ -31,6 +30,7 @@ let parse_error s =
 %token IF THEN ELSE FI
 %token WHILE DO
 %token FORK JOIN
+%token LOCK UNLOCK
 %token PLUS MINUS
 %token TIMES DIVIDE
 %token EQ NEQ LT LTE GT GTE
@@ -44,6 +44,7 @@ let parse_error s =
 %right IF THEN ELSE FI
 %right WHILE DO DONE
 %right FORK JOIN
+%right LOCK UNLOCK
 %left PLUS MINUS
 %left TIMES DIVIDE
 %right EQ NEQ LT LTE GT GTE
@@ -57,36 +58,33 @@ let parse_error s =
 program:
   cmd EOF  { $1 }
 
-aexp:
-    ID                  { Ast.Var($1) }
-  | INT                 { Ast.Int($1) }
-  | aexp PLUS aexp      { Ast.Binop($1, Ast.Add, $3) }
-  | aexp MINUS aexp     { Ast.Binop($1, Ast.Sub, $3) }
-  | aexp TIMES aexp     { Ast.Binop($1, Ast.Mul, $3) }
-  | aexp DIVIDE aexp    { Ast.Binop($1, Ast.Div, $3) }
-  | LPAREN aexp RPAREN  { ($2) }
-
-bexp:
-    TRUE                { Ast.True }
-  | FALSE               { Ast.False }
-  | LPAREN bexp RPAREN  { ($2) }
-  | aexp EQ aexp        { Ast.Cmp($1, Ast.Eq, $3) }
-  | aexp NEQ aexp       { Ast.Cmp($1, Ast.Neq, $3) }
-  | aexp LT aexp        { Ast.Cmp($1, Ast.Lt, $3) }
-  | aexp LTE aexp       { Ast.Cmp($1, Ast.Lte, $3) }
-  | aexp GT aexp        { Ast.Cmp($1, Ast.Gt, $3) }
-  | aexp GTE aexp       { Ast.Cmp($1, Ast.Gte, $3) }
-  | bexp AND bexp       { Ast.And($1, $3) }
-  | bexp OR bexp        { Ast.Or($1, $3) }
+exp:
+    ID                { Ast.Var($1) }
+  | INT               { Ast.Conc($1) }
+  | exp PLUS exp      { Ast.Binop($1, Ast.Add, $3) }
+  | exp MINUS exp     { Ast.Binop($1, Ast.Sub, $3) }
+  | exp TIMES exp     { Ast.Binop($1, Ast.Mul, $3) }
+  | exp DIVIDE exp    { Ast.Binop($1, Ast.Div, $3) }
+  | exp EQ exp        { Ast.Binop($1, Ast.Eq, $3) }
+  | exp NEQ exp       { Ast.Binop($1, Ast.Neq, $3) }
+  | exp LT exp        { Ast.Binop($1, Ast.Lt, $3) }
+  | exp LTE exp       { Ast.Binop($1, Ast.Lte, $3) }
+  | exp GT exp        { Ast.Binop($1, Ast.Gt, $3) }
+  | exp GTE exp       { Ast.Binop($1, Ast.Gte, $3) }
+  | exp AND exp       { Ast.Binop($1, Ast.And, $3) }
+  | exp OR exp        { Ast.Binop($1, Ast.Or, $3) }
+  | LPAREN exp RPAREN { ($2) }
 
 cmd:
     SKIP                          { Ast.Skip }
-  | ID ASSIGN aexp                { Ast.Assign($1, $3) }
-  | IF bexp THEN cmd ELSE cmd FI  { Ast.If($2, $4, $6) }
-  | WHILE bexp DO cmd DONE        { Ast.While($2, $4) }
+  | ID ASSIGN exp                 { Ast.Assign($1, $3) }
+  | IF exp THEN cmd ELSE cmd FI   { Ast.If($2, $4, $6) }
+  | WHILE exp DO cmd DONE         { Ast.While($2, $4) }
   | FORK ID DO cmd DONE           { Ast.Fork($2, $4) }
-  | JOIN aexp                     { Ast.Join($2) }
+  | JOIN exp                      { Ast.Join($2) }
+  | LOCK ID                       { Ast.Lock($2) }
+  | UNLOCK ID                     { Ast.Unlock($2) }
   | LBRACE cmd RBRACE             { ($2) }
   | cmd SEMICOLON                 { Ast.Seq($1, Ast.Skip) }
   | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
-  | RETURN aexp                   { Ast.Return($2) }
+  | RETURN exp                    { Ast.Return($2) }
