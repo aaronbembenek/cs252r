@@ -1,7 +1,8 @@
 open Ast
 
-(* TODO place holder *)
+(* TODO placeholders *)
 type value = int
+type assumption_set = int
 
 (* thread identifiers *)
 type tid = int
@@ -31,7 +32,7 @@ module MapClock : CLOCK =
       TidMap.fold (fun id time a -> TidMap.add id (max time (lookup id a)) a)
   end
 
-module Clock = MapClock 
+module Clock : CLOCK = MapClock
 
 (* memory *)
 module type MEM =
@@ -53,20 +54,74 @@ module MapMem : MEM =
       let old = lookup x m in VarMap.add x ((v,t)::old) m
   end
 
-module Mem = MapMem
+module Mem : MEM = MapMem
 
-(* Assumption set *)
+(* thread input configuration *)
+type thread_input_config = {
+  c : cmd;
+  t : Clock.t;
+  m : Mem.t;
+  a : assumption_set;
+}
 
-(* Thread level input config - record *)
+(* thread output configuration *)
+type thread_output_config = {
+  c : cmd;
+  m : Mem.t;
+  a : assumption_set;
+}
 
-(* Thread level output config - record *)
+module ThreadOutputConfigSet =
+  Set.Make(struct type t = thread_output_config let compare = compare end)
 
-(* Output config set? *)
+(* thread pool *)
+module type THREAD_POOL =
+  sig
+    type t
+    val initial : cmd -> t
+    val update : tid -> cmd*Clock.t -> t -> t
+    val lookup : tid -> t -> cmd*Clock.t
+  end
 
-(* Thread pool *)
+module MapThreadPool : THREAD_POOL =
+  struct
+    type t = (cmd*Clock.t) TidMap.t
+    let initial c = TidMap.add 0 (c,Clock.inc 0 Clock.bot) TidMap.empty
+    let update id (c,time) t = TidMap.add id (c,time) t
+    let lookup id t = TidMap.find id t
+  end
 
-(* Lock state *)
+module ThreadPool : THREAD_POOL = MapThreadPool
 
-(* SymConfig - record *)
+(* lock state *)
+module type LOCK_STATE =
+  sig
+    type t
+    val initial : t
+    val update : var -> tid option*int*Clock.t -> t -> t
+    val lookup : var -> t -> tid option*int*Clock.t
+  end
 
-(* SymExec - queue??? *)
+module MapLockState : LOCK_STATE =
+  struct
+    type t = (tid option*int*Clock.t) VarMap.t
+    let initial = VarMap.empty
+    let update x (idopt,count,time) t =
+      VarMap.add x (idopt,count,time) t
+    let lookup x t =
+      try VarMap.find x t with Not_found -> (None,0,Clock.bot)
+  end
+
+module LockState = MapLockState
+
+(* thread pool configuration *)
+type thread_pool_config = {
+  tp : ThreadPool.t;
+  m : Mem.t;
+  ls : LockState.t;
+  a : assumption_set;
+}
+
+
+module ThreadPoolConfigSet =
+  Set.Make(struct type t = thread_pool_config let compare = compare end)
