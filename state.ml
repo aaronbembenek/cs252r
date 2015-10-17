@@ -11,7 +11,10 @@ type tid = int
 module TidMap = Map.Make(struct type t = tid let compare = compare end)
 module VarMap = Map.Make(struct type t = var let compare = compare end)
 
-(* vector clocks *)
+(*****************************************************************************
+ * VECTOR CLOCKS
+ *****************************************************************************)
+
 module type CLOCK =
   sig
     type t 
@@ -20,7 +23,7 @@ module type CLOCK =
     val join : t -> t -> t 
   end
 
-module MapClock : CLOCK =
+module Map_clock : CLOCK =
   struct
     type t = int TidMap.t
     let bot = TidMap.empty
@@ -32,9 +35,12 @@ module MapClock : CLOCK =
       TidMap.fold (fun id time a -> TidMap.add id (max time (lookup id a)) a)
   end
 
-module Clock : CLOCK = MapClock
+module Clock : CLOCK = Map_clock
 
-(* memory *)
+(*****************************************************************************
+ * MEMORY
+ *****************************************************************************)
+
 module type MEM =
   sig
     type t
@@ -43,7 +49,7 @@ module type MEM =
     val write : var -> value -> Clock.t -> t -> t
   end
 
-module MapMem : MEM =
+module Map_mem : MEM =
   struct
     type t = (value*Clock.t) list VarMap.t
     let empty = VarMap.empty
@@ -54,25 +60,38 @@ module MapMem : MEM =
       let old = lookup x m in VarMap.add x ((v,t)::old) m
   end
 
-module Mem : MEM = MapMem
+module Mem : MEM = Map_mem
+
+(******************************************************************************
+ * THREAD-LEVEL STATE 
+ ******************************************************************************)
 
 (* thread input configuration *)
 type thread_input_config = {
-  c : cmd;
-  t : Clock.t;
-  m : Mem.t;
-  a : assumption_set;
+  c    : cmd;
+  time : Clock.t;
+  m    : Mem.t;
+  asmp : assumption_set;
 }
 
 (* thread output configuration *)
 type thread_output_config = {
-  c : cmd;
-  m : Mem.t;
-  a : assumption_set;
+  c    : cmd;
+  m    : Mem.t;
+  asmp : assumption_set;
 }
 
-module ThreadOutputConfigSet =
+module Thread_output_config_set =
   Set.Make(struct type t = thread_output_config let compare = compare end)
+
+(* annotations are used to pass information relevant to thread pool-level state
+ * with output configuration set *)
+type annotation = | Eps | Fork of int*cmd | Join of int
+                  | Lock of var | Unlock of var
+
+(******************************************************************************
+ * THREAD POOL-LEVEL STATE
+ ******************************************************************************)
 
 (* thread pool *)
 module type THREAD_POOL =
@@ -84,7 +103,7 @@ module type THREAD_POOL =
     val new_id : unit -> tid
   end
 
-module MapThreadPool : THREAD_POOL =
+module Map_thread_pool : THREAD_POOL =
   struct
     type t = (cmd*Clock.t) TidMap.t
     let initial = TidMap.empty
@@ -94,7 +113,7 @@ module MapThreadPool : THREAD_POOL =
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
   end
 
-module ThreadPool : THREAD_POOL = MapThreadPool
+module Thread_pool : THREAD_POOL = Map_thread_pool
 
 (* lock state *)
 module type LOCK_STATE =
@@ -105,7 +124,7 @@ module type LOCK_STATE =
     val lookup : var -> t -> tid option*int*Clock.t
   end
 
-module MapLockState : LOCK_STATE =
+module Map_lock_state : LOCK_STATE =
   struct
     type t = (tid option*int*Clock.t) VarMap.t
     let initial = VarMap.empty
@@ -115,16 +134,15 @@ module MapLockState : LOCK_STATE =
       try VarMap.find x t with Not_found -> (None,0,Clock.bot)
   end
 
-module LockState : LOCK_STATE = MapLockState
+module Lock_state : LOCK_STATE = Map_lock_state
 
 (* thread pool configuration *)
 type thread_pool_config = {
-  tp : ThreadPool.t;
-  m : Mem.t;
-  ls : LockState.t;
-  a : assumption_set;
+  tp   : ThreadPool.t;
+  m    : Mem.t;
+  ls   : LockState.t;
+  asmp : assumption_set;
 }
 
-
-module ThreadPoolConfigSet =
+module Thread_pool_config_set =
   Set.Make(struct type t = thread_pool_config let compare = compare end)
