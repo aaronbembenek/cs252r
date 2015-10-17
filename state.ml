@@ -78,17 +78,20 @@ module ThreadOutputConfigSet =
 module type THREAD_POOL =
   sig
     type t
-    val initial : cmd -> t
+    val initial : t
     val update : tid -> cmd*Clock.t -> t -> t
     val lookup : tid -> t -> cmd*Clock.t
+    val new_id : unit -> tid
   end
 
 module MapThreadPool : THREAD_POOL =
   struct
     type t = (cmd*Clock.t) TidMap.t
-    let initial c = TidMap.add 0 (c,Clock.inc 0 Clock.bot) TidMap.empty
+    let initial = TidMap.empty
     let update id (c,time) t = TidMap.add id (c,time) t
     let lookup id t = TidMap.find id t
+    let cur_id = ref 0
+    let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
   end
 
 module ThreadPool : THREAD_POOL = MapThreadPool
@@ -112,7 +115,7 @@ module MapLockState : LOCK_STATE =
       try VarMap.find x t with Not_found -> (None,0,Clock.bot)
   end
 
-module LockState = MapLockState
+module LockState : LOCK_STATE = MapLockState
 
 (* thread pool configuration *)
 type thread_pool_config = {
