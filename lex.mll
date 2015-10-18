@@ -26,6 +26,8 @@ rule lexer = parse
 | eol               { incr_lineno lexbuf; lexer lexbuf } 
 | ws+               { lexer lexbuf }
 | digit+            { INT(int_of_string(Lexing.lexeme lexbuf)) }
+| "symbolic"        { SYMBOLIC }
+| "assert"          { ASSERT }
 | "true"            { TRUE }
 | "false"           { FALSE }
 | "skip"            { SKIP }

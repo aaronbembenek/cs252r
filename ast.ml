@@ -14,10 +14,13 @@ type binop =
 | And
 | Or
 
+type value =
+  Sym of var
+| Conc of int
+
 type exp =
   Var of var
-| Sym of var
-| Conc of int
+| Val of value
 | Binop of exp * binop * exp
 
 type cmd =
@@ -31,5 +34,7 @@ type cmd =
 | Lock of var
 | Unlock of var
 | Return of exp
+| Symbolic of var
+| Assert of exp
 
 type program = cmd

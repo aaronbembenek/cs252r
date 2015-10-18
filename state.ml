@@ -1,7 +1,6 @@
 open Ast
 
 (* TODO placeholders *)
-type value = int
 type assumption_set = int
 
 (* thread identifiers *)
@@ -54,7 +53,7 @@ module Map_mem : MEM =
     type t = (value*Clock.t) list VarMap.t
     let empty = VarMap.empty
     let lookup (x : var) (m : t) : (value*Clock.t) list =
-      try VarMap.find x m with Not_found -> [(0,Clock.bot)]
+      try VarMap.find x m with Not_found -> [(Conc 0,Clock.bot)]
     (* TODO currently stores memory in newest-write-first order... okay? *)
     let write (x : var) (v : value) (t : Clock.t) (m : t) : t =
       let old = lookup x m in VarMap.add x ((v,t)::old) m
@@ -101,6 +100,7 @@ module type THREAD_POOL =
     val update : tid -> cmd*Clock.t -> t -> t
     val lookup : tid -> t -> cmd*Clock.t
     val new_id : unit -> tid
+    val choose : t -> tid 
   end
 
 module Map_thread_pool : THREAD_POOL =
@@ -111,6 +111,10 @@ module Map_thread_pool : THREAD_POOL =
     let lookup id t = TidMap.find id t
     let cur_id = ref 0
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
+    let choose t =
+      let bindings = TidMap.bindings t in
+      let i = Random.int (List.length bindings) in
+      fst (List.nth bindings i)
   end
 
 module Thread_pool : THREAD_POOL = Map_thread_pool
@@ -138,9 +142,9 @@ module Lock_state : LOCK_STATE = Map_lock_state
 
 (* thread pool configuration *)
 type thread_pool_config = {
-  tp   : ThreadPool.t;
+  tp   : Thread_pool.t;
   m    : Mem.t;
-  ls   : LockState.t;
+  ls   : Lock_state.t;
   asmp : assumption_set;
 }
 
