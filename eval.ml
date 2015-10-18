@@ -2,30 +2,81 @@ open Ast
 open State
 
 exception TODO
-exception Done of int
+exception RuntimeException of string 
 
 let step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
   raise TODO
 
 let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
-  let id = Thread_pool.choose s.tp in
-  let (c,time) = Thread_pool.lookup id s.tp in
-  let iconfig = {c=c;time=time;m=s.m;asmp=s.asmp} in
+  let id,(c,time) = Thread_pool.choose s.tp in
+  let iconfig = {c=c; time=time; m=s.m; asmp=s.asmp} in
   let oconfigs,anno = step_thread iconfig in
   match anno with
-  | Fork (n,c) ->
+  | Fork (id',c') ->
       assert (Thread_output_config_set.cardinal oconfigs = 1);
-      raise TODO
-  | Join n ->
+      let oconfig = Thread_output_config_set.choose oconfigs in
+      assert (oconfig.asmp = s.asmp);
+      let time_for_id = Clock.inc id time in
+      let time_for_id' = Clock.inc id' time in
+      let tp' = Thread_pool.update id' (c',time_for_id')
+        (Thread_pool.update id (oconfig.c,time_for_id) s.tp) in
+      let r = {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp} in
+      Thread_pool_config_set.singleton r
+
+  | Join id' ->
       assert (Thread_output_config_set.cardinal oconfigs = 1);
-      raise TODO
+      let oconfig = Thread_output_config_set.choose oconfigs in
+      assert (oconfig.asmp = s.asmp);
+      assert (oconfig.m = iconfig.m);
+      let (c',time') = Thread_pool.lookup id' s.tp in
+      let r =
+        match c' with
+        | Skip ->
+            let tp' = Thread_pool.update id (oconfig.c,Clock.join time time') s.tp in
+            {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp }
+        | _ -> s in (* can't progress *)
+      Thread_pool_config_set.singleton r
+      
   | Lock x ->
       assert (Thread_output_config_set.cardinal oconfigs = 1);
-      raise TODO
+      let oconfig = Thread_output_config_set.choose oconfigs in
+      assert (oconfig.asmp = s.asmp);
+      assert (oconfig.m = iconfig.m);
+      let owner,cnt,time' = Lock_state.lookup x s.ls in
+      let id' = match owner with None -> id | Some id' -> id' in
+      let r = if id = id' then
+        let tp' = Thread_pool.update id (oconfig.c,Clock.join time time') s.tp in
+        let ls' = Lock_state.update x (Some id,cnt + 1,time') s.ls in
+        {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp}
+      else
+        s in (* can't progress *)
+      Thread_pool_config_set.singleton r
+
   | Unlock x ->
       assert (Thread_output_config_set.cardinal oconfigs = 1);
-      raise TODO
-  | Eps -> raise TODO
+      let oconfig = Thread_output_config_set.choose oconfigs in
+      assert (oconfig.asmp = s.asmp);
+      assert (oconfig.m = iconfig.m);
+      let owner,cnt,_ = Lock_state.lookup x s.ls in
+      let id' = match owner with None -> id + 1 | Some id' -> id' in
+      let ls' =
+        if id <> id' then
+          raise (RuntimeException ("cannot unlock unheld lock "^x))
+        else
+          let cnt' = cnt - 1 in
+          let owner' = if cnt' = 0 then None else Some id in
+          Lock_state.update x (owner',cnt',time) s.ls in
+      let tp' = Thread_pool.update id (oconfig.c,Clock.inc id time) s.tp in
+      let r = {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp} in
+      Thread_pool_config_set.singleton r
+
+  | Eps ->
+      let time' = Clock.inc id time in
+      Thread_output_config_set.fold
+        (fun {c=c'; m=m'; asmp=asmp'} a ->
+          let tp' = Thread_pool.update id (c',time') s.tp in
+          Thread_pool_config_set.add {tp=tp'; m=m'; ls=s.ls; asmp=asmp'} a)
+        oconfigs Thread_pool_config_set.empty
 
 let step_sym_exec (s:Thread_pool_config_set.t) : Thread_pool_config_set.t =
   let e = Thread_pool_config_set.choose s in

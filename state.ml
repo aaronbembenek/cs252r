@@ -80,6 +80,7 @@ type thread_output_config = {
   asmp : assumption_set;
 }
 
+(* TODO probably need to switch the backing of this type *)
 module Thread_output_config_set =
   Set.Make(struct type t = thread_output_config let compare = compare end)
 
@@ -100,7 +101,7 @@ module type THREAD_POOL =
     val update : tid -> cmd*Clock.t -> t -> t
     val lookup : tid -> t -> cmd*Clock.t
     val new_id : unit -> tid
-    val choose : t -> tid 
+    val choose : t -> tid*(cmd*Clock.t)
   end
 
 module Map_thread_pool : THREAD_POOL =
@@ -108,13 +109,14 @@ module Map_thread_pool : THREAD_POOL =
     type t = (cmd*Clock.t) TidMap.t
     let initial = TidMap.empty
     let update id (c,time) t = TidMap.add id (c,time) t
-    let lookup id t = TidMap.find id t
+    let lookup id t =
+        try TidMap.find id t with Not_found -> (Skip,Clock.bot)
     let cur_id = ref 0
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
     let choose t =
       let bindings = TidMap.bindings t in
       let i = Random.int (List.length bindings) in
-      fst (List.nth bindings i)
+      List.nth bindings i
   end
 
 module Thread_pool : THREAD_POOL = Map_thread_pool
@@ -148,5 +150,6 @@ type thread_pool_config = {
   asmp : assumption_set;
 }
 
+(* TODO probably need to switch the backing of this type *)
 module Thread_pool_config_set =
   Set.Make(struct type t = thread_pool_config let compare = compare end)
