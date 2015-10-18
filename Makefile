@@ -10,6 +10,7 @@ all:
 	$(COMPILER) -c lex.ml
 	$(COMPILER) -c eval.ml
 	$(COMPILER) -o interp ast.cmo state.cmo parse.cmo lex.cmo eval.cmo
+	$(COMPILER) -I +alt-ergo-zero unix.cma nums.cma aez.cma assumptions.ml -o solve
 
 clean:
-	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp
+	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp solve
