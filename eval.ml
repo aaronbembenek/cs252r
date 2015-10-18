@@ -134,10 +134,15 @@ let initial_state (p:program) =
   Thread_pool_config_set.singleton config
 
 let run (p:program) =
+  let initial_state =
+    let id = Thread_pool.new_id () in
+    let tp = Thread_pool.update id (p,Clock.bot) Thread_pool.initial in
+    let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial; asmp=0} in
+    Thread_pool_config_set.singleton config in
   let rec loop (s:Thread_pool_config_set.t) =
     if not (Thread_pool_config_set.is_empty s)
     then loop (step_sym_exec s) in
-  loop (initial_state p)
+  loop initial_state
 
 (*
 let run (p : program) : int =
