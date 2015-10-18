@@ -25,6 +25,8 @@ let parse_error s =
 %token <int> INT 
 %token EOF
 %token <string> ID
+%token SYMBOLIC
+%token ASSERT
 %token TRUE FALSE
 %token SKIP
 %token IF THEN ELSE FI
@@ -60,7 +62,7 @@ program:
 
 exp:
     ID                { Ast.Var($1) }
-  | INT               { Ast.Conc($1) }
+  | INT               { Ast.Val(Conc($1)) }
   | exp PLUS exp      { Ast.Binop($1, Ast.Add, $3) }
   | exp MINUS exp     { Ast.Binop($1, Ast.Sub, $3) }
   | exp TIMES exp     { Ast.Binop($1, Ast.Mul, $3) }
@@ -88,3 +90,5 @@ cmd:
   | cmd SEMICOLON                 { Ast.Seq($1, Ast.Skip) }
   | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
   | RETURN exp                    { Ast.Return($2) }
+  | SYMBOLIC ID                   { Ast.Symbolic($2) }
+  | ASSERT exp                    { Ast.Assert($2) }

@@ -1,8 +1,49 @@
 open Ast
+open State
 
 exception TODO
 exception Done of int
 
+let step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
+  raise TODO
+
+let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
+  let id = Thread_pool.choose s.tp in
+  let (c,time) = Thread_pool.lookup id s.tp in
+  let iconfig = {c=c;time=time;m=s.m;asmp=s.asmp} in
+  let oconfigs,anno = step_thread iconfig in
+  match anno with
+  | Fork (n,c) ->
+      assert (Thread_output_config_set.cardinal oconfigs = 1);
+      raise TODO
+  | Join n ->
+      assert (Thread_output_config_set.cardinal oconfigs = 1);
+      raise TODO
+  | Lock x ->
+      assert (Thread_output_config_set.cardinal oconfigs = 1);
+      raise TODO
+  | Unlock x ->
+      assert (Thread_output_config_set.cardinal oconfigs = 1);
+      raise TODO
+  | Eps -> raise TODO
+
+let step_sym_exec (s:Thread_pool_config_set.t) : Thread_pool_config_set.t =
+  let e = Thread_pool_config_set.choose s in
+  let new_states = step_thread_pool e in
+  let s' = Thread_pool_config_set.remove e s
+  in Thread_pool_config_set.union s' new_states
+
+let initial_state (p:program) =
+  let id = Thread_pool.new_id () in
+  let tp = Thread_pool.update id (p,Clock.bot) Thread_pool.initial in
+  let tp_config = {tp=tp; m=Mem.empty; ls=Lock_state.initial; asmp=0} in
+  Thread_pool_config_set.singleton tp_config
+
+let rec run (s:Thread_pool_config_set.t) =
+  if not (Thread_pool_config_set.is_empty s)
+  then run (step_sym_exec s)
+
+(*
 (* Map for variables with concrete bindings. *)
 let cvars = Hashtbl.create 33
 let lookup_cvars x =
@@ -28,8 +69,8 @@ let get_active_tids () = Hashtbl.fold (fun tid _ l -> tid :: l) threads []
 
 let rec eval_exp (e : exp) : int =
   match e with
-    Conc i -> i
-  | Sym x -> raise TODO
+    Val (Conc i) -> i
+  | Val (Sym x) -> raise TODO
   | Var x -> !(lookup_cvars x)
   | Binop(e1,b,e2) ->
       let (i1,i2) = (eval_exp e1, eval_exp e2) in
@@ -91,3 +132,4 @@ let _ =
     print_string "\n";
     (* Exit with return value. *)
     exit return_val
+*)
