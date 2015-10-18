@@ -102,6 +102,8 @@ module type THREAD_POOL =
     val lookup : tid -> t -> cmd*Clock.t
     val new_id : unit -> tid
     val choose : t -> tid*(cmd*Clock.t)
+    val is_empty : t -> bool
+    val remove : tid -> t -> t
   end
 
 module Map_thread_pool : THREAD_POOL =
@@ -117,6 +119,8 @@ module Map_thread_pool : THREAD_POOL =
       let bindings = TidMap.bindings t in
       let i = Random.int (List.length bindings) in
       List.nth bindings i
+    let is_empty = TidMap.is_empty
+    let remove = TidMap.remove
   end
 
 module Thread_pool : THREAD_POOL = Map_thread_pool
