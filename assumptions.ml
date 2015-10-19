@@ -7,67 +7,72 @@ module T = Term
 module F = Formula
 module Solver = Make (struct end)
 
-module TermMap = Map.Make(String);;
-type termMap = Smt.Term.t TermMap.t
+module TermMap = Map.Make(String) ;;
+type termMap = Smt.Term.t TermMap.t ;;
 
-(* Given the name of a variable and map of accumulated symbolic values, return
-   the corresponding term and updated map. *)
-let make_sym (x : string) (symbols : termMap) : Smt.Term.t * termMap =
-	if TermMap.mem x symbols
-	then (TermMap.find x symbols, symbols)
-	else let sym = Hstring.make x in
-		Symbol.declare sym [] Type.type_int;
-		let term = T.make_app sym [] in
-		(term, TermMap.add x term symbols)
+let make_sym (x : value) (symbols : termMap) : Smt.Term.t * termMap =
+	match x with
+		Sym v ->
+			(if TermMap.mem v symbols
+			then (TermMap.find v symbols, symbols)
+			else let sym = Hstring.make v in
+				Symbol.declare sym [] Type.type_int;
+				let term = T.make_app sym [] in
+				(term, TermMap.add v term symbols))
+	| Conc i -> (T.make_int (Num.Int i), symbols)
 ;;
 
-(* z = x binop y *)
-let make_sym_binop (x : string) (y : string) (z : string) (symbols : termMap)
-		(b : binop) =
+let add_binop_assumption (x : value) (y : value) (z : value)
+		(symbols : termMap) (assumptions : Smt.Formula.t list) (b : binop) :
+		termMap * Smt.Formula.t list =
 	let (tx, symbols_x) = make_sym x symbols in
 	let (ty, symbols_y) = make_sym y symbols_x in
 	let (tz, symbols_z) = make_sym y symbols_y in
-	match b with
-		Add -> F.make_lit F.Eq [tz; T.make_arith T.Plus tx ty]
-	| Sub -> F.make_lit F.Eq [tz; T.make_arith T.Minus tx ty]
-	| Mul -> F.make_lit F.Eq [tz; T.make_arith T.Mult tx ty]
-	| Div -> F.make_lit F.Eq [tz; T.make_arith T.Div tx ty]
-
-(* x bincmp y *)
-let make_sym_binop (x : string) (y : string) (symbols : termMap) (b : bincmp) =
-	let (tx, symbols_x) = make_sym x symbols in
-	let (ty, symbols_y) = make_sym y symbols_x in
-	match b with
-		Eq -> F.make_lit F.Eq [tx; ty]
-	| Neq -> F.make_lit F.Neq [tx; ty]
-	| Lt -> F.make_lit F.Lt [tx; ty]
-	| Lte -> F.make_lit F.Le [tx; ty]
-	| Gt -> F.make F.Not [F.make_lit F.Le [tx; ty]]
-	| Gte -> F.make F.Not [F.make_lit F.Lt [tx; ty]]
-	| And -> F.make F.And [F.make_lit F.Neq [tx; T.make_int (Num.Int 0)];
-			F.make_lit F.Neq [ty; T.make_int (Num.Int 0)]]
-	| Or -> F.make F.Or [F.make_lit F.Neq [tx; T.make_int (Num.Int 0)];
-			F.make_lit F.Neq [ty; T.make_int (Num.Int 0)]]
+	let assumption = 
+		(match b with
+			Add -> F.make_lit F.Eq [tz; T.make_arith T.Plus tx ty]
+		| Sub -> F.make_lit F.Eq [tz; T.make_arith T.Minus tx ty]
+		| Mul -> F.make_lit F.Eq [tz; T.make_arith T.Mult tx ty]
+		| Div -> F.make_lit F.Eq [tz; T.make_arith T.Div tx ty]) in
+	(symbols_z, assumptions @ [assumption])
 ;;
 
-let x = Hstring.make "x";;
-let y = Hstring.make "y";;
+let add_bincmp_assumption (x : value) (y : value) (symbols : termMap)
+	(b : bincmp) (assumptions : Smt.Formula.t list) :
+	termMap * Smt.Formula.t list =
+	let (tx, symbols_x) = make_sym x symbols in
+	let (ty, symbols_y) = make_sym y symbols_x in
+	let assumption = 
+		(match b with
+			Eq -> F.make_lit F.Eq [tx; ty]
+		| Neq -> F.make_lit F.Neq [tx; ty]
+		| Lt -> F.make_lit F.Lt [tx; ty]
+		| Lte -> F.make_lit F.Le [tx; ty]
+		| Gt -> F.make F.Not [F.make_lit F.Le [tx; ty]]
+		| Gte -> F.make F.Not [F.make_lit F.Lt [tx; ty]]
+		| And -> F.make F.And [F.make_lit F.Neq [tx; T.make_int (Num.Int 0)];
+				F.make_lit F.Neq [ty; T.make_int (Num.Int 0)]]
+		| Or -> F.make F.Or [F.make_lit F.Neq [tx; T.make_int (Num.Int 0)];
+				F.make_lit F.Neq [ty; T.make_int (Num.Int 0)]]) in
+	(symbols_y, assumptions @ [assumption])
+;;
 
-Symbol.declare x [] Type.type_int;;
-Symbol.declare y [] Type.type_int;;
+let rec make_assumptions (assumptions : Smt.Formula.t list) (n : int) =
+	match assumptions with
+		[] -> ()
+	| hd::tl -> Solver.assume ~id:n hd; make_assumptions tl (n + 1)
+;;
 
-let tx = T.make_app x [];;
-let ty = T.make_app y [];;
-let t1 = T.make_int (Num.Int 1);;
+let check (assumptions : Smt.Formula.t list) : bool =
+	try
+	  Solver.clear ();
+	  make_assumptions assumptions 1;
+	  Solver.check ();
+	  true
+	with Unsat _ ->
+	  false
+;;
 
-let f = F.make_lit F.Eq [tx; (T.make_arith T.Minus ty t1)];;  (* x = y - 1 *)
-let neg_goal = F.make F.Not [F.make_lit F.Lt [tx; ty]];;      (* not (x < y) *)
-
-try
-  Solver.clear ();
-  Solver.assume ~id:1 f;
-  Solver.assume ~id:2 neg_goal;
-  Solver.check ();
-  print_endline "not valid"
-with Unsat _ ->
-  print_endline "valid";;
+(*match (check assumptions) with
+	true -> print_endline "valid"
+| false -> print_endline "not valid"*)
