@@ -10,15 +10,22 @@ let rec eval_exp (e:exp) (m:Mem.t) : value =
   | Val (Sym x) -> Sym x
   | Var x -> raise TODO
   | Binop(e1,b,e2) ->
-      let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
+      (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
       match v1,v2 with
       | Conc i1, Conc i2 ->
-          let v = match b with
+          (let v = match b with
               Add -> i1 + i2
             | Sub -> i1 - i2
             | Mul -> i1 * i2
-            | Div -> i1 / i2
-            | Eq -> if i1 == i2 then 1 else 0
+            | Div -> i1 / i2 in
+          Conc v)
+      | _ -> raise TODO)
+  | Bincmp(e1,b,e2) ->
+      (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
+      match v1,v2 with
+      | Conc i1, Conc i2 ->
+          let v = match b with
+              Eq -> if i1 == i2 then 1 else 0
             | Neq -> if i1 != i2 then 1 else 0
             | Lt -> if i1 < i2 then 1 else 0
             | Lte -> if i1 <= i2 then 1 else 0
@@ -27,7 +34,7 @@ let rec eval_exp (e:exp) (m:Mem.t) : value =
             | And -> if (i1 != 0) && (i2 != 0) then 1 else 0
             | Or -> if (i1 != 0) || (i2 != 0) then 1 else 0 in
           Conc v
-      | _ -> raise TODO
+      | _ -> raise TODO)
 
 let step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
   match s.c with

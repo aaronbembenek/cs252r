@@ -5,7 +5,9 @@ type binop =
 | Sub
 | Mul
 | Div
-| Eq
+
+type bincmp =
+  Eq
 | Neq
 | Lt
 | Lte
@@ -22,6 +24,7 @@ type exp =
   Var of var
 | Val of value
 | Binop of exp * binop * exp
+| Bincmp of exp * bincmp * exp
 
 type cmd =
   Skip

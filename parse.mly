@@ -67,14 +67,14 @@ exp:
   | exp MINUS exp     { Ast.Binop($1, Ast.Sub, $3) }
   | exp TIMES exp     { Ast.Binop($1, Ast.Mul, $3) }
   | exp DIVIDE exp    { Ast.Binop($1, Ast.Div, $3) }
-  | exp EQ exp        { Ast.Binop($1, Ast.Eq, $3) }
-  | exp NEQ exp       { Ast.Binop($1, Ast.Neq, $3) }
-  | exp LT exp        { Ast.Binop($1, Ast.Lt, $3) }
-  | exp LTE exp       { Ast.Binop($1, Ast.Lte, $3) }
-  | exp GT exp        { Ast.Binop($1, Ast.Gt, $3) }
-  | exp GTE exp       { Ast.Binop($1, Ast.Gte, $3) }
-  | exp AND exp       { Ast.Binop($1, Ast.And, $3) }
-  | exp OR exp        { Ast.Binop($1, Ast.Or, $3) }
+  | exp EQ exp        { Ast.Bincmp($1, Ast.Eq, $3) }
+  | exp NEQ exp       { Ast.Bincmp($1, Ast.Neq, $3) }
+  | exp LT exp        { Ast.Bincmp($1, Ast.Lt, $3) }
+  | exp LTE exp       { Ast.Bincmp($1, Ast.Lte, $3) }
+  | exp GT exp        { Ast.Bincmp($1, Ast.Gt, $3) }
+  | exp GTE exp       { Ast.Bincmp($1, Ast.Gte, $3) }
+  | exp AND exp       { Ast.Bincmp($1, Ast.And, $3) }
+  | exp OR exp        { Ast.Bincmp($1, Ast.Or, $3) }
   | LPAREN exp RPAREN { ($2) }
 
 cmd:

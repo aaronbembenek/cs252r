@@ -32,7 +32,13 @@ let make_sym_binop (x : string) (y : string) (z : string) (symbols : termMap)
 	| Sub -> F.make_lit F.Eq [tz; T.make_arith T.Minus tx ty]
 	| Mul -> F.make_lit F.Eq [tz; T.make_arith T.Mult tx ty]
 	| Div -> F.make_lit F.Eq [tz; T.make_arith T.Div tx ty]
-	| Eq -> F.make_lit F.Eq [tx; ty]
+
+(* x bincmp y *)
+let make_sym_binop (x : string) (y : string) (symbols : termMap) (b : bincmp) =
+	let (tx, symbols_x) = make_sym x symbols in
+	let (ty, symbols_y) = make_sym y symbols_x in
+	match b with
+		Eq -> F.make_lit F.Eq [tx; ty]
 	| Neq -> F.make_lit F.Neq [tx; ty]
 	| Lt -> F.make_lit F.Lt [tx; ty]
 	| Lte -> F.make_lit F.Le [tx; ty]
