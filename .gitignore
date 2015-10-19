@@ -27,3 +27,4 @@ lex.ml
 
 # executables
 interp
+solve

@@ -11,7 +11,8 @@ all:
 	$(COMPILER) -c eval.ml
 	ocamlfind $(COMPILER) -o interp -linkpkg -package aez \
 		ast.cmo state.cmo parse.cmo lex.cmo eval.cmo
-	$(COMPILER) -I +alt-ergo-zero unix.cma nums.cma aez.cma assumptions.ml -o solve
+	ocamlfind $(COMPILER) -o solve -linkpkg -package aez assumptions.ml
+# $(COMPILER) -I +alt-ergo-zero unix.cma nums.cma aez.cma assumptions.ml -o solve
 
 clean:
 	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp solve

@@ -2,12 +2,13 @@ open Ast
 open State
 
 exception TODO
-exception RuntimeException of string 
+exception Runtime_exception of string 
 
-let rec eval_exp (e:exp) (m:Mem.t) : value =
+(*
+let rec eval_exp (e:exp) (m:Mem.t) : Value_set.t =
   match e with
-    Val (Conc i) -> Conc i
-  | Val (Sym x) -> Sym x
+    Val (Conc i) -> Value_set.singleton (Conc i)
+  | Val (Sym x) -> Value_set.singleton (Sym x)
   | Var x -> raise TODO
   | Binop(e1,b,e2) ->
       (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
@@ -18,7 +19,7 @@ let rec eval_exp (e:exp) (m:Mem.t) : value =
             | Sub -> i1 - i2
             | Mul -> i1 * i2
             | Div -> i1 / i2 in
-          Conc v)
+          Value_set.singleton (Conc v))
       | _ -> raise TODO)
   | Bincmp(e1,b,e2) ->
       (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
@@ -33,23 +34,132 @@ let rec eval_exp (e:exp) (m:Mem.t) : value =
             | Gte -> if i1 >= i2 then 1 else 0
             | And -> if (i1 != 0) && (i2 != 0) then 1 else 0
             | Or -> if (i1 != 0) || (i2 != 0) then 1 else 0 in
-          Conc v
+          Value_set.singleton (Conc v)
       | _ -> raise TODO)
+*)
 
-let step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
+(******************************************************************************)
+
+let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
+  match b with
+  | Add -> i1 + i2
+  | Sub -> i1 - i2
+  | Mul -> i1 * i2
+  | Div -> i1 / i2
+
+let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t =
+  match e with
+  | Val _ -> assert false (* should never be reached *)
+  | Var x -> raise TODO
+  | Bincmp (e1,b,e2) -> raise TODO
+  | Binop (e1,b,e2) ->
+      match e1,e2 with
+      (* first case: both exps are values, so compute binop *)
+      | Val v1, Val v2 -> 
+          (match v1, v2 with
+          (* both values are concrete *)
+          | Conc i1, Conc i2 ->
+              Exp_output_config_set.singleton {e=Val(Conc(eval_conc_binop i1 i2 b)); m; asmp}
+          (* at least one value is symbolic *)
+          | _ -> raise TODO)
+
+      (* second case: first exp is a value but second is not, so take step with second *)
+      | Val _, _ ->
+          let oconfigs = step_exp {e=e2; time; m; asmp} in
+          Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Exp_output_config_set.add {e=Binop(e1,b,e'); m=m'; asmp=asmp'} s)
+            oconfigs Exp_output_config_set.empty 
+
+      (* third case: first exp is not a value, so take step with first *)
+      | _ ->
+          let oconfigs = step_exp {e=e1; time; m; asmp} in
+          Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Exp_output_config_set.add {e=Binop(e',b,e2); m=m'; asmp=asmp'} s)
+            oconfigs Exp_output_config_set.empty 
+
+(******************************************************************************)
+
+let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
   match s.c with
   | Skip -> assert false (* should never be reached *)
-  | Assign (x,e) -> raise TODO 
-  | Seq (c1,c2) -> raise TODO
-  | If (b,c1,c2) -> raise TODO
-  | While (b,c') -> raise TODO
-  | Fork (x,c') -> raise TODO 
-  | Join e -> raise TODO
-  | Lock x -> raise TODO
-  | Unlock x -> raise TODO
+
+  | Assign (x,e) ->
+      (match e with
+      | Val _ -> raise TODO
+      | _ ->
+          let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
+          (Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Thread_output_config_set.add {c=Assign(x,e'); m=m'; asmp=asmp'} s)
+            oconfigs Thread_output_config_set.empty), Eps)
+
+  | Seq (c1,c2) ->
+      (match c1 with
+      | Skip ->
+          Thread_output_config_set.singleton {c=c2; m=s.m; asmp=s.asmp}, Eps
+      | _ ->
+          let oconfigs, anno = step_thread {c=c1; time=s.time; m=s.m; asmp=s.asmp} in
+          (Thread_output_config_set.fold
+            (fun {c=c'; m=m'; asmp=asmp'} s ->
+              Thread_output_config_set.add {c=Seq(c',c2); m=m'; asmp=asmp'} s)
+            oconfigs Thread_output_config_set.empty), anno)
+
+  | If (e,c1,c2) ->
+      (match e with
+      | Val _ -> raise TODO
+      | _ ->
+          let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
+          (Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Thread_output_config_set.add {c=If(e',c1,c2); m=m'; asmp=asmp'} s)
+            oconfigs Thread_output_config_set.empty), Eps)
+
+  | While (e,c') ->
+      (Thread_output_config_set.singleton
+        {c=If(e,Seq(c',While(e,c')),Skip); m=s.m; asmp=s.asmp}), Eps
+        
+  | Fork (x,c') ->
+      let id = Thread_pool.new_id () in
+      let m' = Mem.write x (Conc id) s.time s.m in
+      Thread_output_config_set.singleton
+        {c=Skip; m=m'; asmp=s.asmp}, (Fork(id,c')) 
+
+  | Join e ->
+      (match e with
+      | Val (Conc n) -> raise TODO
+      | Val _ -> raise (Runtime_exception "cannot join over a symbolic value")
+      | _ ->
+          let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
+          (Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Thread_output_config_set.add {c=Join(e'); m=m'; asmp=asmp'} s)
+            oconfigs Thread_output_config_set.empty), Eps)
+
+  | Lock x ->
+      Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Lock x
+
+  | Unlock x ->
+      Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Unlock x
+
   | Symbolic x -> raise TODO
-  | Assert e -> raise TODO
+
+  | Assert e ->
+      (match e with
+      | Val _ -> raise TODO
+      (* TODO we might need to add another annotation that tells the thread pool
+       * if an assertion fails *)
+      | _ ->
+          let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
+          (Exp_output_config_set.fold
+            (fun {e=e'; m=m'; asmp=asmp'} s ->
+              Thread_output_config_set.add {c=Assert(e');m=m';asmp=asmp'} s)
+            oconfigs Thread_output_config_set.empty), Eps)
+
   | Return e -> assert false (* TODO do we still need return? *)
+
+(******************************************************************************)
 
 let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
   if Thread_pool.is_empty s.tp then Thread_pool_config_set.empty
@@ -111,7 +221,7 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
           let id' = match owner with None -> id + 1 | Some id' -> id' in
           let ls' =
             if id <> id' then
-              raise (RuntimeException ("cannot unlock unheld lock "^x))
+              raise (Runtime_exception ("cannot unlock unheld lock "^x))
             else
               let cnt' = cnt - 1 in
               let owner' = if cnt' = 0 then None else Some id in
@@ -128,17 +238,15 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
               Thread_pool_config_set.add {tp=tp'; m=m'; ls=s.ls; asmp=asmp'} a)
             oconfigs Thread_pool_config_set.empty
 
+(******************************************************************************)
+
 let step_sym_exec (s:Thread_pool_config_set.t) : Thread_pool_config_set.t =
   let e = Thread_pool_config_set.choose s in
   let new_states = step_thread_pool e in
   let s' = Thread_pool_config_set.remove e s
   in Thread_pool_config_set.union s' new_states
 
-let initial_state (p:program) =
-  let id = Thread_pool.new_id () in
-  let tp = Thread_pool.update id (p,Clock.bot) Thread_pool.initial in
-  let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial; asmp=0} in
-  Thread_pool_config_set.singleton config
+(******************************************************************************)
 
 let run (p:program) =
   let initial_state =
@@ -150,15 +258,6 @@ let run (p:program) =
     if not (Thread_pool_config_set.is_empty s)
     then loop (step_sym_exec s) in
   loop initial_state
-
-(*
-let run (p : program) : int =
-  let rec loop () =
-    match get_active_tids () with
-    | [] -> 0
-    | tids -> List.iter step_thread tids; loop () in
-  add_thread (create_new_tid ()) p;
-  try loop () with Done n -> n
 
 (* Copied directly from CS 153 material. *)
 let parse_file () =
@@ -172,10 +271,4 @@ let parse_file () =
 
 let _ =
   let prog = parse_file () in
-  let return_val = (run prog) in
-    (* Print result for testing. *)
-    print_int return_val;
-    print_string "\n";
-    (* Exit with return value. *)
-    exit return_val
-*)
+  run prog
