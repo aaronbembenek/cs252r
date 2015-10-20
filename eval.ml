@@ -1,5 +1,6 @@
 open Ast
 open State
+open Assumptions
 
 exception TODO
 exception Runtime_exception of string 
@@ -42,16 +43,26 @@ let rec eval_exp (e:exp) (m:Mem.t) : Value_set.t =
 
 let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
   match b with
-  | Add -> i1 + i2
+    Add -> i1 + i2
   | Sub -> i1 - i2
   | Mul -> i1 * i2
   | Div -> i1 / i2
+  | _ -> let result = (match b with
+      Eq -> i1 == i2
+    | Neq -> i1 != i2
+    | Lt -> i1 < i2
+    | Lte -> i1 <= i2
+    | Gt -> i1 > i2
+    | Gte -> i1 >= i2
+    | And -> (i1 != 0) && (i2 != 0)
+    | Or -> (i1 != 0) || (i2 != 0)
+    | _ -> assert false (* should never be reached *)) in
+    if result then 1 else 0
 
 let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t =
   match e with
   | Val _ -> assert false (* should never be reached *)
   | Var x -> raise TODO
-  | Bincmp (e1,b,e2) -> raise TODO
   | Binop (e1,b,e2) ->
       match e1,e2 with
       (* first case: both exps are values, so compute binop *)
@@ -61,7 +72,11 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
           | Conc i1, Conc i2 ->
               Exp_output_config_set.singleton {e=Val(Conc(eval_conc_binop i1 i2 b)); m; asmp}
           (* at least one value is symbolic *)
-          | _ -> raise TODO)
+          | _ -> let (new_sym, symbols, assumptions) = 
+                add_binop_assumption v1 v2 asmp.syms asmp.assumps b in
+              let new_assumption_set = {syms = symbols; assumps = assumptions} in
+              Exp_output_config_set.singleton {e=Val(new_sym); m=m; asmp=new_assumption_set}
+          )
 
       (* second case: first exp is a value but second is not, so take step with second *)
       | Val _, _ ->
@@ -252,7 +267,8 @@ let run (p:program) =
   let initial_state =
     let id = Thread_pool.new_id () in
     let tp = Thread_pool.update id (p,Clock.bot) Thread_pool.initial in
-    let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial; asmp=0} in
+    let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
+                  asmp={syms=TermMap.empty; assumps=[]}} in
     Thread_pool_config_set.singleton config in
   let rec loop (s:Thread_pool_config_set.t) =
     if not (Thread_pool_config_set.is_empty s)

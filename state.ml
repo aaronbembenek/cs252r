@@ -1,7 +1,10 @@
 open Ast
+open Assumptions
 
-(* TODO placeholders *)
-type assumption_set = int
+type assumption_set = {
+  syms    : termMap;
+  assumps : assumptions;
+}
 
 (* thread identifiers *)
 type tid = int
