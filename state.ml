@@ -9,9 +9,10 @@ type assumption_set = {
 (* thread identifiers *)
 type tid = int
 
-(* useful maps *)
+(* useful maps and sets *)
 module Tid_map = Map.Make(struct type t = tid let compare = compare end)
 module Var_map = Map.Make(struct type t = var let compare = compare end)
+module Value_set = Set.Make(struct type t = value let compare = compare end)
 
 (*****************************************************************************
  * VECTOR CLOCKS
