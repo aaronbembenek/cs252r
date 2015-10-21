@@ -1,45 +1,10 @@
 open Ast
-open State
 open Assumptions
+open Mmodel
+open State
 
 exception TODO
 exception Runtime_exception of string 
-
-(*
-let rec eval_exp (e:exp) (m:Mem.t) : Value_set.t =
-  match e with
-    Val (Conc i) -> Value_set.singleton (Conc i)
-  | Val (Sym x) -> Value_set.singleton (Sym x)
-  | Var x -> raise TODO
-  | Binop(e1,b,e2) ->
-      (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
-      match v1,v2 with
-      | Conc i1, Conc i2 ->
-          (let v = match b with
-              Add -> i1 + i2
-            | Sub -> i1 - i2
-            | Mul -> i1 * i2
-            | Div -> i1 / i2 in
-          Value_set.singleton (Conc v))
-      | _ -> raise TODO)
-  | Bincmp(e1,b,e2) ->
-      (let (v1,v2) = (eval_exp e1 m, eval_exp e2 m) in
-      match v1,v2 with
-      | Conc i1, Conc i2 ->
-          let v = match b with
-              Eq -> if i1 == i2 then 1 else 0
-            | Neq -> if i1 != i2 then 1 else 0
-            | Lt -> if i1 < i2 then 1 else 0
-            | Lte -> if i1 <= i2 then 1 else 0
-            | Gt -> if i1 > i2 then 1 else 0
-            | Gte -> if i1 >= i2 then 1 else 0
-            | And -> if (i1 != 0) && (i2 != 0) then 1 else 0
-            | Or -> if (i1 != 0) || (i2 != 0) then 1 else 0 in
-          Value_set.singleton (Conc v)
-      | _ -> raise TODO)
-*)
-
-(******************************************************************************)
 
 let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
   match b with
@@ -62,7 +27,9 @@ let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
 let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t =
   match e with
   | Val _ -> assert false (* should never be reached *)
-  | Var x -> raise TODO (*AARON*)
+  | Var x ->
+      Value_set.fold (fun v s -> Exp_output_config_set.add {e=Val(v); m; asmp} s)
+        (Mem_model.read x time m) Exp_output_config_set.empty
   | Binop (e1,b,e2) ->
       match e1,e2 with
       (* first case: both exps are values, so compute binop *)
@@ -160,7 +127,8 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 
   | Join e ->
       (match e with
-      | Val (Conc n) -> raise TODO (*AARON*)
+      | Val (Conc n) ->
+          Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Join n
       | Val _ -> raise (Runtime_exception "cannot join over a symbolic value")
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
