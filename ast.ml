@@ -33,7 +33,6 @@ type cmd =
 | Join of exp
 | Lock of var
 | Unlock of var
-| Return of exp
 | Symbolic of var
 | Assert of exp
 

@@ -42,7 +42,6 @@ rule lexer = parse
 | "join"            { JOIN }
 | "lock"            { LOCK }
 | "unlock"          { UNLOCK }
-| "return"          { RETURN }
 | identifier as id  { ID(id) }
 | "+"               { PLUS }
 | "-"               { MINUS }

@@ -89,6 +89,5 @@ cmd:
   | LBRACE cmd RBRACE             { ($2) }
   | cmd SEMICOLON                 { Ast.Seq($1, Ast.Skip) }
   | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
-  | RETURN exp                    { Ast.Return($2) }
   | SYMBOLIC ID                   { Ast.Symbolic($2) }
   | ASSERT exp                    { Ast.Assert($2) }

@@ -6,6 +6,8 @@ module T = Term
 module F = Formula
 module Solver = Make (struct end)
 
+exception Runtime_exception of string
+
 module TermMap = Map.Make(String) ;;
 type termMap = Smt.Term.t TermMap.t ;;
 
@@ -14,30 +16,37 @@ type assumptions = Smt.Formula.t list ;;
 let one = T.make_int (Num.Int 1) ;;
 let zero = T.make_int (Num.Int 0) ;;
 
-let rec get_new_sym (symbols : termMap) (i : int) : value =
+let make_sym (x : string) (symbols : termMap) : value * termMap =
+  let new_symbols = (if TermMap.mem x symbols
+    then symbols
+    else let sym = Hstring.make x in
+      Symbol.declare sym [] Type.type_int;
+      let term = T.make_app sym [] in
+      TermMap.add x term symbols) in
+  (Sym x, new_symbols)
+;;
+
+let rec get_new_sym (symbols : termMap) (i : int) : value * termMap =
   let new_sym = ("_s" ^ (string_of_int i)) in
   if TermMap.mem new_sym symbols
   then get_new_sym symbols (i + 1)
-  else Sym(new_sym)
+  else make_sym new_sym symbols
+;;
 
-let make_sym (x : value) (symbols : termMap) : Smt.Term.t * termMap =
+let get_term (x : value) (symbols : termMap) : Smt.Term.t =
   match x with
-    Sym v ->
-      (if TermMap.mem v symbols
-      then (TermMap.find v symbols, symbols)
-      else let sym = Hstring.make v in
-        Symbol.declare sym [] Type.type_int;
-        let term = T.make_app sym [] in
-        (term, TermMap.add v term symbols))
-  | Conc i -> (T.make_int (Num.Int i), symbols)
+    Sym v -> (if TermMap.mem v symbols
+      then TermMap.find v symbols
+      else raise (Runtime_exception "uninitialized symbolic value"))
+  | Conc i -> T.make_int (Num.Int i)
 ;;
 
 let add_binop_assumption (x : value) (y : value) (symbols : termMap)
     (assumps : assumptions) (b : binop) : value * termMap * assumptions =
-  let (tx, symbols_x) = make_sym x symbols in
-  let (ty, symbols_y) = make_sym y symbols_x in
-  let new_sym = get_new_sym symbols_y 0 in
-  let (tz, symbols_z) = make_sym new_sym symbols_y in
+  let tx = get_term x symbols in
+  let ty = get_term y symbols in
+  let (new_sym, new_symbols) = get_new_sym symbols 0 in
+  let tz = get_term new_sym new_symbols in
   let assump = 
     (match b with
       Add -> F.make_lit F.Eq [tz; T.make_arith T.Plus tx ty]
@@ -58,7 +67,7 @@ let add_binop_assumption (x : value) (y : value) (symbols : termMap)
       | _ -> assert false) in
       F.make_lit F.Eq [tz; T.make_ite f one zero]
     ) in
-  (new_sym, symbols_z, assumps @ [assump])
+  (new_sym, new_symbols, assumps @ [assump])
 ;;
 
 let rec make_assumptions (assumptions : Smt.Formula.t list) (n : int) =

@@ -143,7 +143,10 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
   | Unlock x ->
       Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Unlock x
 
-  | Symbolic x -> raise TODO (*DISCUSS*)
+  | Symbolic x -> (let (new_sym, new_symbols) = make_sym x s.asmp.symbols in
+      let new_mem = Mem.write x new_sym s.time s.m in
+      let new_assumption_set = {symbols=new_symbols; assumptions=s.asmp.assumptions} in
+      Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=new_assumption_set}, Eps)
 
   | Assert e ->
       (match e with
@@ -162,8 +165,6 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
             (fun {e=e'; m=m'; asmp=asmp'} s ->
               Thread_output_config_set.add {c=Assert(e');m=m';asmp=asmp'} s)
             oconfigs Thread_output_config_set.empty), Eps)
-
-  | Return e -> assert false (* TODO do we still need return? *)
 
 (******************************************************************************)
 
