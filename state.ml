@@ -2,8 +2,8 @@ open Ast
 open Assumptions
 
 type assumption_set = {
-  syms    : termMap;
-  assumps : assumptions;
+  symbols     : termMap;
+  assumptions : assumptions;
 }
 
 (* thread identifiers *)

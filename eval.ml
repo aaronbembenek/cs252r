@@ -62,7 +62,7 @@ let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
 let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t =
   match e with
   | Val _ -> assert false (* should never be reached *)
-  | Var x -> raise TODO
+  | Var x -> raise TODO (*AARON*)
   | Binop (e1,b,e2) ->
       match e1,e2 with
       (* first case: both exps are values, so compute binop *)
@@ -72,9 +72,9 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
           | Conc i1, Conc i2 ->
               Exp_output_config_set.singleton {e=Val(Conc(eval_conc_binop i1 i2 b)); m; asmp}
           (* at least one value is symbolic *)
-          | _ -> let (new_sym, symbols, assumptions) = 
-                add_binop_assumption v1 v2 asmp.syms asmp.assumps b in
-              let new_assumption_set = {syms = symbols; assumps = assumptions} in
+          | _ -> let (new_sym, new_symbols, new_assumptions) = 
+                add_binop_assumption v1 v2 asmp.symbols asmp.assumptions b in
+              let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
               Exp_output_config_set.singleton {e=Val(new_sym); m=m; asmp=new_assumption_set}
           )
 
@@ -102,7 +102,9 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 
   | Assign (x,e) ->
       (match e with
-      | Val _ -> raise TODO
+      | Val (Sym v) -> raise TODO (*DISCUSS*)
+      | Val (Conc v) -> let new_mem = Mem.write x (Conc v) s.time s.m in
+          Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=s.asmp}, Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
@@ -123,7 +125,23 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 
   | If (e,c1,c2) ->
       (match e with
-      | Val _ -> raise TODO
+      | Val (Sym x) -> 
+          (* x is true *)
+          let (val_true, sym_true, asmp_true) = 
+            add_binop_assumption (Sym x) (Conc 1) s.asmp.symbols s.asmp.assumptions Eq in
+          let true_set = if check asmp_true then Thread_output_config_set.singleton 
+              {c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}
+            else Thread_output_config_set.empty in
+          (* x is false *)
+          let (val_false, sym_false, asmp_false) = 
+            add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
+          let false_set = if check asmp_false then Thread_output_config_set.singleton 
+              {c=c2; m=s.m; asmp={symbols=sym_false; assumptions=asmp_false}}
+            else Thread_output_config_set.empty in
+          (Thread_output_config_set.union true_set false_set, Eps)
+
+      | Val (Conc x) -> let cnext = if x != 0 then c1 else c2 in
+          Thread_output_config_set.singleton {c=cnext; m=s.m; asmp=s.asmp}, Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
@@ -143,7 +161,7 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 
   | Join e ->
       (match e with
-      | Val (Conc n) -> raise TODO
+      | Val (Conc n) -> raise TODO (*AARON*)
       | Val _ -> raise (Runtime_exception "cannot join over a symbolic value")
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
@@ -158,11 +176,17 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
   | Unlock x ->
       Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Unlock x
 
-  | Symbolic x -> raise TODO
+  | Symbolic x -> raise TODO (*DISCUSS*)
 
   | Assert e ->
       (match e with
-      | Val _ -> raise TODO
+        Val (Conc x) -> if x == 0 then assert false
+          else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
+      | Val (Sym x) -> let (_, _, asmp) = 
+          add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
+        if (not (check asmp)) then assert false
+          else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
+
       (* TODO we might need to add another annotation that tells the thread pool
        * if an assertion fails *)
       | _ ->
@@ -268,7 +292,7 @@ let run (p:program) =
     let id = Thread_pool.new_id () in
     let tp = Thread_pool.update id (p,Clock.bot) Thread_pool.initial in
     let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
-                  asmp={syms=TermMap.empty; assumps=[]}} in
+                  asmp={symbols=TermMap.empty; assumptions=[]}} in
     Thread_pool_config_set.singleton config in
   let rec loop (s:Thread_pool_config_set.t) =
     if not (Thread_pool_config_set.is_empty s)
