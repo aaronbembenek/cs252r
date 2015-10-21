@@ -102,8 +102,7 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 
   | Assign (x,e) ->
       (match e with
-      | Val (Sym v) -> raise TODO (*DISCUSS*)
-      | Val (Conc v) -> let new_mem = Mem.write x (Conc v) s.time s.m in
+      | Val v -> let new_mem = Mem.write x v s.time s.m in
           Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=s.asmp}, Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
@@ -128,7 +127,7 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
       | Val (Sym x) -> 
           (* x is true *)
           let (val_true, sym_true, asmp_true) = 
-            add_binop_assumption (Sym x) (Conc 1) s.asmp.symbols s.asmp.assumptions Eq in
+            add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
           let true_set = if check asmp_true then Thread_output_config_set.singleton 
               {c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}
             else Thread_output_config_set.empty in
