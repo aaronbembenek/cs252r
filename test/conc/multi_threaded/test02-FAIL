@@ -1,0 +1,7 @@
+x = 0;
+fork y do
+  while x < 5 do
+    x = x + 1
+  done
+done;
+assert x == 5;

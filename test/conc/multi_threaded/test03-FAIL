@@ -1,0 +1,16 @@
+x = 0;
+fork y do
+  while a < 5 do
+    x = x + 1;
+    a = a + 1;
+  done
+done;
+fork z do
+  while b < 5 do
+    x = x + 1;
+    b = b + 1;
+  done
+done;
+join y;
+join z;
+assert x == 10;

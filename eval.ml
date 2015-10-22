@@ -149,7 +149,7 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
       Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=new_assumption_set}, Eps)
 
   | Assert e ->
-      (let assert_false () = Printf.printf "failed assert\n" in 
+      (let assert_false () = Printf.printf "\027[91mfailed assert\n\027[0m" in 
       match e with
         Val (Conc x) -> if x == 0 then
             (assert_false(); Thread_output_config_set.empty, Deadend)

@@ -16,5 +16,10 @@ all:
 		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo eval.cmo 
 	#ocamlfind $(COMPILER) -o solve -linkpkg -package aez assumptions.ml
 
+test:
+	python test.py
+
 clean:
 	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp solve
+
+.PHONY: test clean

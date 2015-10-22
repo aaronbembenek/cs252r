@@ -1,0 +1,20 @@
+x = 0;
+fork y do
+  while a < 5 do
+    lock x;
+    x = x + 1;
+    a = a + 1;
+    unlock x
+  done
+done;
+fork z do
+  while b < 5 do
+    lock x;
+    x = x + 1;
+    b = b + 1;
+    unlock x
+  done
+done;
+join y;
+join z;
+assert x == 10;
