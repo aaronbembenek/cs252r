@@ -149,16 +149,20 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
       Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=new_assumption_set}, Eps)
 
   | Assert e ->
-      (match e with
-        Val (Conc x) -> if x == 0 then assert false
+      (let assert_false () = Printf.printf "failed assert\n" in 
+      match e with
+        Val (Conc x) -> if x == 0 then
+            (assert_false(); Thread_output_config_set.empty, Deadend)
           else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
-      | Val (Sym x) -> let (_, _, asmp) = 
-          add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
-        if (not (check asmp)) then assert false
-          else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
-
-      (* TODO we might need to add another annotation that tells the thread pool
-       * if an assertion fails *)
+      | Val symv -> let (_, _, asmp_false) = 
+          add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
+          if (check asmp_false) then assert_false();
+          let (_, sym_true, asmp_true) =
+            add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
+          if (check asmp_true) then
+            let asmp' = {symbols=sym_true; assumptions=asmp_true} in
+            Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=asmp'}, Eps
+          else Thread_output_config_set.empty, Deadend
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
@@ -244,6 +248,8 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
               let tp' = Thread_pool.update id (c',time') s.tp in
               Thread_pool_config_set.add {tp=tp'; m=m'; ls=s.ls; asmp=asmp'} a)
             oconfigs Thread_pool_config_set.empty
+
+      | Deadend -> Thread_pool_config_set.empty
 
 (******************************************************************************)
 

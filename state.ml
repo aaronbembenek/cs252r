@@ -114,7 +114,7 @@ module Thread_output_config_set =
 (* annotations are used to pass information relevant to thread pool-level state
  * with output configuration set *)
 type annotation = | Eps | Fork of int*cmd | Join of int
-                  | Lock of var | Unlock of var
+                  | Lock of var | Unlock of var | Deadend
 
 (******************************************************************************
  * THREAD POOL-LEVEL STATE
