@@ -11,6 +11,7 @@ let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
     Add -> i1 + i2
   | Sub -> i1 - i2
   | Mul -> i1 * i2
+  (* TODO: check for divide by zero error *)
   | Div -> i1 / i2
   | _ -> let result = (match b with
       Eq -> i1 == i2
@@ -39,6 +40,7 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
           | Conc i1, Conc i2 ->
               Exp_output_config_set.singleton {e=Val(Conc(eval_conc_binop i1 i2 b)); m; asmp}
           (* at least one value is symbolic *)
+          (* TODO: check for divide by zero error *)
           | _ -> let (new_sym, new_symbols, new_assumptions) = 
                 add_binop_assumption v1 v2 asmp.symbols asmp.assumptions b in
               let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
@@ -149,14 +151,17 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
       Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=new_assumption_set}, Eps)
 
   | Assert e ->
-      (let assert_false () = Printf.printf "\027[91mfailed assert\n\027[0m" in 
+      (let handle_failure asmp =
+        Printf.eprintf "\027[91mASSERT FAILED\027[0m\n";
+        Sym_error.report (Sym_error.Assert e) s.m asmp in 
       match e with
         Val (Conc x) -> if x == 0 then
-            (assert_false(); Thread_output_config_set.empty, Deadend)
+            (handle_failure s.asmp; Thread_output_config_set.empty, Deadend)
           else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
-      | Val symv -> let (_, _, asmp_false) = 
+      | Val symv -> let (_, sym_false, asmp_false) = 
           add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
-          if (check asmp_false) then assert_false();
+          if (check asmp_false) then
+            handle_failure {symbols=sym_false; assumptions=asmp_false};
           let (_, sym_true, asmp_true) =
             add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
           if (check asmp_true) then
@@ -284,5 +289,8 @@ let parse_file () =
         Parse.program Lex.lexer (Lexing.from_channel ch)
 
 let _ =
+  (* make sure that if we're interrupted we still dump error report *)
+  Sys.catch_break true;
   let prog = parse_file () in
-  run prog
+  (try run prog with Sys.Break -> ());
+  Sym_error.dump stdout 

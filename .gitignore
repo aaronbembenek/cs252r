@@ -28,3 +28,6 @@ lex.ml
 # executables
 interp
 solve
+
+# miscellaneous
+.local.vimrc

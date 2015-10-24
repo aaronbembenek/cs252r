@@ -11,9 +11,11 @@ all:
 	$(COMPILER) -c parse.ml
 	ocamllex lex.mll
 	$(COMPILER) -c lex.ml
+	$(COMPILER) -c sym_error.ml
 	$(COMPILER) -c eval.ml
 	ocamlfind $(COMPILER) -o interp -linkpkg -package aez \
-		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo eval.cmo 
+		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo \
+		sym_error.cmo eval.cmo
 	#ocamlfind $(COMPILER) -o solve -linkpkg -package aez assumptions.ml
 
 test:
