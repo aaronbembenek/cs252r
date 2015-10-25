@@ -24,6 +24,8 @@ module type CLOCK =
     val bot : t 
     val inc : tid -> t -> t 
     val join : t -> t -> t 
+    val lte : t -> t -> bool
+    val print : out_channel -> t -> unit
   end
 
 module Map_clock : CLOCK =
@@ -36,6 +38,10 @@ module Map_clock : CLOCK =
       Tid_map.add id (lookup id t + 1) t
     let join : t -> t -> t =
       Tid_map.fold (fun id time a -> Tid_map.add id (max time (lookup id a)) a)
+    let lte (c1: t) (c2: t) : bool =
+      Tid_map.fold (fun id time a -> (time <= (lookup id c2)) && a) c1 true
+    let print (out: out_channel) : t -> unit =
+      Tid_map.iter (Printf.fprintf out "%d -> %d\n")
   end
 
 module Clock : CLOCK = Map_clock
@@ -179,6 +185,7 @@ type thread_pool_config = {
   m    : Mem.t;
   ls   : Lock_state.t;
   asmp : assumption_set;
+  nact : int;
 }
 
 (* TODO probably need to switch the backing of this type *)
