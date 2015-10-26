@@ -30,9 +30,10 @@ module type SET =
     *)
   end
 
-module QueueSet : SET =
+module Queue =
   struct
     type 'a t = ('a list)*('a list)
+
   end
 
 (*****************************************************************************
@@ -155,26 +156,35 @@ module type THREAD_POOL =
     val update : tid -> cmd*Clock.t -> t -> t
     val lookup : tid -> t -> cmd*Clock.t
     val new_id : unit -> tid
-    val choose : t -> tid*(cmd*Clock.t)
-    val is_empty : t -> bool
-    val remove : tid -> t -> t
+    val choose : t -> ((tid*(cmd*Clock.t)) option)*t
   end
 
+(* TODO factor out scheduling *)
 module Map_thread_pool : THREAD_POOL =
   struct
-    type t = (cmd*Clock.t) Tid_map.t
-    let initial = Tid_map.empty
-    let update id (c,time) t = Tid_map.add id (c,time) t
+    type t = {map:(cmd*Clock.t) Tid_map.t; active:(tid list)*(tid list)}
+
+    let initial = {map=Tid_map.empty; active=[],[]}
+
+    let update id (c,time) t =
+      let map = Tid_map.add id (c,time) t.map in
+      let active =
+        match c with 
+        | Skip -> t.active
+        | _ -> let l1,l2 = t.active in (l1,id::l2) in
+      {map; active}
+
     let lookup id t =
-        try Tid_map.find id t with Not_found -> (Skip,Clock.bot)
+        try Tid_map.find id t.map with Not_found -> (Skip,Clock.bot)
+
     let cur_id = ref 0
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
-    let choose t =
-      let bindings = Tid_map.bindings t in
-      let i = Random.int (List.length bindings) in
-      List.nth bindings i
-    let is_empty = Tid_map.is_empty
-    let remove = Tid_map.remove
+
+    let rec choose (t:t) : ((tid*(cmd*Clock.t)) option)*t =
+      match t.active with
+      | [], [] -> None, t
+      | hd::tl, l2 -> Some (hd, lookup hd t), {map=t.map; active=(tl,l2)}
+      | [], l2 -> choose {map=t.map; active=(List.rev l2,[])}
   end
 
 module Thread_pool : THREAD_POOL = Map_thread_pool
@@ -200,15 +210,12 @@ module Map_lock_state : LOCK_STATE =
 
 module Lock_state : LOCK_STATE = Map_lock_state
 
-module Tid_set = Set.Make(struct type t = tid let compare = compare end)
-
 (* thread pool configuration *)
 type thread_pool_config = {
   tp   : Thread_pool.t;
   m    : Mem.t;
   ls   : Lock_state.t;
   asmp : assumption_set;
-  act  : Tid_set.t;
 }
 
 (* TODO probably need to switch the backing of this type *)
