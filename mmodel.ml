@@ -15,6 +15,12 @@ module Weak_mem_model : MEM_MODEL =
   struct
     let read x time m =
       let writes = Mem.lookup x m in
+      (*
+      Printf.eprintf "var %s\n" x;
+      List.iter (fun (Conc v,c) ->
+        Printf.eprintf "value: %d\n" v;
+        Clock.print stderr c) writes;
+        *)
       let rec loop writes lookedat acc =
         match writes with
         | [] -> acc 
@@ -27,4 +33,5 @@ module Weak_mem_model : MEM_MODEL =
       loop writes [] Value_set.empty
   end
 
-module Mem_model = Weak_mem_model 
+(* module Mem_model = Sequential_mem_model *)
+module Mem_model = Weak_mem_model

@@ -14,6 +14,27 @@ module Tid_map = Map.Make(struct type t = tid let compare = compare end)
 module Var_map = Map.Make(struct type t = var let compare = compare end)
 module Value_set = Set.Make(struct type t = value let compare = compare end)
 
+module type SET =
+  sig
+    type 'a t
+    (*
+    val empty : 'a t
+    val singleton : 'a -> 'a t
+    val is_empty : 'a t -> bool
+    val cardinal : 'a t -> int
+    val add : 'a -> 'a t -> 'a t
+    val remove : 'a -> 'a t -> 'a t
+    val union : 'a t -> 'a t -> 'a t
+    val diff : 'a t -> 'a t -> 'a t
+    val intersect : 'a t -> 'a t -> 'a t
+    *)
+  end
+
+module QueueSet : SET =
+  struct
+    type 'a t = ('a list)*('a list)
+  end
+
 (*****************************************************************************
  * VECTOR CLOCKS
  *****************************************************************************)
@@ -179,13 +200,15 @@ module Map_lock_state : LOCK_STATE =
 
 module Lock_state : LOCK_STATE = Map_lock_state
 
+module Tid_set = Set.Make(struct type t = tid let compare = compare end)
+
 (* thread pool configuration *)
 type thread_pool_config = {
   tp   : Thread_pool.t;
   m    : Mem.t;
   ls   : Lock_state.t;
   asmp : assumption_set;
-  nact : int;
+  act  : Tid_set.t;
 }
 
 (* TODO probably need to switch the backing of this type *)

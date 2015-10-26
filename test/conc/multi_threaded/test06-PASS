@@ -1,0 +1,9 @@
+fork x do
+  y = 42 
+done;
+while z < 10 do
+  z = z + 1
+done;
+join x;
+assert y == 42
+

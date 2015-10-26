@@ -178,12 +178,12 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
 (******************************************************************************)
 
 let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
-  if s.nact = 0 then Thread_pool_config_set.empty
+  if Tid_set.is_empty s.act then Thread_pool_config_set.empty
   else
     let id,(c,time) = Thread_pool.choose s.tp in
     if c = Skip then
       Thread_pool_config_set.singleton
-        {tp=s.tp; m=s.m; ls=s.ls; asmp=s.asmp; nact=s.nact-1}
+        {tp=s.tp; m=s.m; ls=s.ls; asmp=s.asmp; act=Tid_set.remove id s.act}
     else
       let iconfig = {c=c; time=time; m=s.m; asmp=s.asmp} in
       let oconfigs,anno = step_thread iconfig in
@@ -196,7 +196,9 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
           let time_for_id' = Clock.inc id' time in
           let tp' = Thread_pool.update id' (c',time_for_id')
             (Thread_pool.update id (oconfig.c,time_for_id) s.tp) in
-          let r = {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp; nact=s.nact+1} in
+          let r =
+            {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp;
+            act=Tid_set.add id' s.act} in
           Thread_pool_config_set.singleton r
 
       | Join id' ->
@@ -209,7 +211,7 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
             match c' with
             | Skip ->
                 let tp' = Thread_pool.update id (oconfig.c,Clock.join time time') s.tp in
-                {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp; nact=s.nact }
+                {tp=tp'; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp; act=s.act }
             | _ -> s in (* can't progress *)
           Thread_pool_config_set.singleton r
           
@@ -223,7 +225,7 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
           let r = if id = id' then
             let tp' = Thread_pool.update id (oconfig.c,Clock.join time time') s.tp in
             let ls' = Lock_state.update x (Some id,cnt + 1,time') s.ls in
-            {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp; nact=s.nact}
+            {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp; act=s.act}
           else
             s in (* can't progress *)
           Thread_pool_config_set.singleton r
@@ -243,16 +245,17 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
               let owner' = if cnt' = 0 then None else Some id in
               Lock_state.update x (owner',cnt',time) s.ls in
           let tp' = Thread_pool.update id (oconfig.c,Clock.inc id time) s.tp in
-          let r = {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp; nact=s.nact} in
+          let r = {tp=tp'; m=oconfig.m; ls=ls'; asmp=oconfig.asmp; act=s.act} in
           Thread_pool_config_set.singleton r
 
       | Eps ->
+          (* TODO this might need fixing... *)
           let time' = time in
           Thread_output_config_set.fold
             (fun {c=c'; m=m'; asmp=asmp'} a ->
               let tp' = Thread_pool.update id (c',time') s.tp in
               Thread_pool_config_set.add
-                {tp=tp'; m=m'; ls=s.ls; asmp=asmp'; nact=s.nact} a)
+                {tp=tp'; m=m'; ls=s.ls; asmp=asmp'; act=s.act} a)
             oconfigs Thread_pool_config_set.empty
 
       | Deadend -> Thread_pool_config_set.empty
@@ -272,7 +275,8 @@ let run (p:program) =
     let id = Thread_pool.new_id () in
     let tp = Thread_pool.update id (p,Clock.inc id Clock.bot) Thread_pool.initial in
     let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
-                  asmp={symbols=TermMap.empty; assumptions=[]}; nact=1} in
+                  asmp={symbols=TermMap.empty; assumptions=[]};
+                  act=Tid_set.singleton id} in
     Thread_pool_config_set.singleton config in
   let rec loop (s:Thread_pool_config_set.t) =
     if not (Thread_pool_config_set.is_empty s)
