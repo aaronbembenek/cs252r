@@ -16,7 +16,8 @@ for tst_dir in tst_dirs:
            if os.path.isfile(os.path.join(tst_dir, f))]
   for tst in sorted(tsts):
     print tst + ":",
-    result = subprocess.check_output([executable, os.path.join(tst_dir, tst)])
+    result = subprocess.check_output([executable, os.path.join(tst_dir, tst)],
+        stderr=subprocess.STDOUT)
     should_pass = tst.split("-")[-1] == "PASS"
     if should_pass == (result == ""):
       print passed
