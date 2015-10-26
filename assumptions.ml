@@ -16,6 +16,8 @@ type assumptions = Smt.Formula.t list ;;
 let one = T.make_int (Num.Int 1) ;;
 let zero = T.make_int (Num.Int 0) ;;
 
+let counter = ref 0 ;;
+
 let make_sym (x : string) (symbols : termMap) : value * termMap =
   let new_symbols = (if TermMap.mem x symbols
     then symbols
@@ -26,11 +28,10 @@ let make_sym (x : string) (symbols : termMap) : value * termMap =
   (Sym x, new_symbols)
 ;;
 
-let rec get_new_sym (symbols : termMap) (i : int) : value * termMap =
-  let new_sym = ("_s" ^ (string_of_int i)) in
-  if TermMap.mem new_sym symbols
-  then get_new_sym symbols (i + 1)
-  else make_sym new_sym symbols
+let get_new_sym (symbols : termMap) : value * termMap =
+  let new_sym = ("_s" ^ (string_of_int !counter)) in
+  let _ = (counter = ref ((!counter) + 1)) in
+  make_sym new_sym symbols
 ;;
 
 let get_term (x : value) (symbols : termMap) : Smt.Term.t =
@@ -45,7 +46,7 @@ let add_binop_assumption (x : value) (y : value) (symbols : termMap)
     (assumps : assumptions) (b : binop) : value * termMap * assumptions =
   let tx = get_term x symbols in
   let ty = get_term y symbols in
-  let (new_sym, new_symbols) = get_new_sym symbols 0 in
+  let (new_sym, new_symbols) = get_new_sym symbols in
   let tz = get_term new_sym new_symbols in
   let assump = 
     (match b with
@@ -82,7 +83,7 @@ let check (assumptions : Smt.Formula.t list) : bool =
     make_assumptions assumptions 1;
     Solver.check ();
     true
-  with Unsat _ ->
+  with Unsat _ | Not_found _ ->
     false
 ;;
 
