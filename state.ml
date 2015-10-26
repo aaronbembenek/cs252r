@@ -14,26 +14,39 @@ module Tid_map = Map.Make(struct type t = tid let compare = compare end)
 module Var_map = Map.Make(struct type t = var let compare = compare end)
 module Value_set = Set.Make(struct type t = value let compare = compare end)
 
-module type SET =
+module type QUEUE =
   sig
     type 'a t
-    (*
     val empty : 'a t
-    val singleton : 'a -> 'a t
-    val is_empty : 'a t -> bool
-    val cardinal : 'a t -> int
-    val add : 'a -> 'a t -> 'a t
-    val remove : 'a -> 'a t -> 'a t
-    val union : 'a t -> 'a t -> 'a t
-    val diff : 'a t -> 'a t -> 'a t
-    val intersect : 'a t -> 'a t -> 'a t
-    *)
+    val enqueue : 'a -> 'a t -> 'a t
+    val dequeue : 'a t -> ('a option)*('a t)
   end
 
-module Queue =
+module ListQueue : QUEUE =
   struct
     type 'a t = ('a list)*('a list)
 
+    let empty = [], []
+
+    let enqueue (e:'a) (q:'a t) : 'a t =
+      let (l1,l2) = q in (l1,e::l2)
+
+    let rec dequeue (q:'a t) : ('a option)*('a t) =
+      match q with
+      | [], [] -> None, q
+      | [], l2 -> dequeue (List.rev l2,[])
+      | hd::tl, l2 -> Some hd, (tl,l2)
+  end
+
+module Random_choose_set (S : Set.S) =
+  struct
+    include S
+
+    (* TODO this is expensive... *)
+    let choose (s: S.t) : S.elt =
+      let els = S.elements s in
+      let i = Random.int (List.length els) in
+      List.nth els i
   end
 
 (*****************************************************************************
@@ -113,8 +126,9 @@ type exp_output_config = {
 }
 
 (* TODO probably need to switch the backing of this type *)
-module Exp_output_config_set =
+module Exp_output_config_set' =
   Set.Make(struct type t = exp_output_config let compare = compare end)
+module Exp_output_config_set = Random_choose_set(Exp_output_config_set')
 
 (******************************************************************************
  * THREAD-LEVEL STATE 
@@ -135,7 +149,6 @@ type thread_output_config = {
   asmp : assumption_set;
 }
 
-(* TODO probably need to switch the backing of this type *)
 module Thread_output_config_set =
   Set.Make(struct type t = thread_output_config let compare = compare end)
 
@@ -162,16 +175,16 @@ module type THREAD_POOL =
 (* TODO factor out scheduling *)
 module Map_thread_pool : THREAD_POOL =
   struct
-    type t = {map:(cmd*Clock.t) Tid_map.t; active:(tid list)*(tid list)}
+    type t = {map:(cmd*Clock.t) Tid_map.t; active:tid ListQueue.t}
 
-    let initial = {map=Tid_map.empty; active=[],[]}
+    let initial = {map=Tid_map.empty; active=ListQueue.empty}
 
     let update id (c,time) t =
       let map = Tid_map.add id (c,time) t.map in
       let active =
         match c with 
         | Skip -> t.active
-        | _ -> let l1,l2 = t.active in (l1,id::l2) in
+        | _ -> ListQueue.enqueue id t.active in
       {map; active}
 
     let lookup id t =
@@ -181,10 +194,9 @@ module Map_thread_pool : THREAD_POOL =
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
 
     let rec choose (t:t) : ((tid*(cmd*Clock.t)) option)*t =
-      match t.active with
-      | [], [] -> None, t
-      | hd::tl, l2 -> Some (hd, lookup hd t), {map=t.map; active=(tl,l2)}
-      | [], l2 -> choose {map=t.map; active=(List.rev l2,[])}
+      match ListQueue.dequeue t.active with
+      | None, q -> None, {map=t.map; active=q} 
+      | Some id, q -> Some (id, lookup id t), {map=t.map; active=q}
   end
 
 module Thread_pool : THREAD_POOL = Map_thread_pool
@@ -218,6 +230,6 @@ type thread_pool_config = {
   asmp : assumption_set;
 }
 
-(* TODO probably need to switch the backing of this type *)
-module Thread_pool_config_set =
+module Thread_pool_config_set' =
   Set.Make(struct type t = thread_pool_config let compare = compare end)
+module Thread_pool_config_set = Random_choose_set(Thread_pool_config_set')
