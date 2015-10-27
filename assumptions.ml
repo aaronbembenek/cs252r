@@ -30,7 +30,7 @@ let make_sym (x : string) (symbols : termMap) : value * termMap =
 
 let get_new_sym (symbols : termMap) : value * termMap =
   let new_sym = ("_s" ^ (string_of_int !counter)) in
-  let _ = (counter = ref ((!counter) + 1)) in
+  counter := (!counter) + 1;
   make_sym new_sym symbols
 ;;
 
