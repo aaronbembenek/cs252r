@@ -38,17 +38,6 @@ module ListQueue : QUEUE =
       | hd::tl, l2 -> Some hd, (tl,l2)
   end
 
-module Random_choose_set (S : Set.S) =
-  struct
-    include S
-
-    (* TODO this is expensive... *)
-    let choose (s: S.t) : S.elt =
-      let els = S.elements s in
-      let i = Random.int (List.length els) in
-      List.nth els i
-  end
-
 (*****************************************************************************
  * VECTOR CLOCKS
  *****************************************************************************)
@@ -125,10 +114,9 @@ type exp_output_config = {
   asmp : assumption_set;
 }
 
-(* TODO probably need to switch the backing of this type *)
-module Exp_output_config_set' =
+(* TODO do these need to be sets or can we use something lighter weight? *)
+module Exp_output_config_set =
   Set.Make(struct type t = exp_output_config let compare = compare end)
-module Exp_output_config_set = Random_choose_set(Exp_output_config_set')
 
 (******************************************************************************
  * THREAD-LEVEL STATE 
@@ -148,9 +136,6 @@ type thread_output_config = {
   m    : Mem.t;
   asmp : assumption_set;
 }
-
-module Thread_output_config_set =
-  Set.Make(struct type t = thread_output_config let compare = compare end)
 
 (* annotations are used to pass information relevant to thread pool-level state
  * with output configuration set *)
@@ -229,7 +214,3 @@ type thread_pool_config = {
   ls   : Lock_state.t;
   asmp : assumption_set;
 }
-
-module Thread_pool_config_set' =
-  Set.Make(struct type t = thread_pool_config let compare = compare end)
-module Thread_pool_config_set = Random_choose_set(Thread_pool_config_set')

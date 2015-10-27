@@ -65,31 +65,30 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
 
 (******************************************************************************)
 
-let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotation =
+let rec step_thread (s:thread_input_config) : thread_output_config list*annotation =
   match s.c with
   | Skip -> assert false (* should never be reached *)
 
   | Assign (x,e) ->
       (match e with
       | Val v -> let new_mem = Mem.write x v s.time s.m in
-          Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=s.asmp}, Eps
+          [{c=Skip; m=new_mem; asmp=s.asmp}], Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
             (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Thread_output_config_set.add {c=Assign(x,e'); m=m'; asmp=asmp'} s)
-            oconfigs Thread_output_config_set.empty), Eps)
+              {c=Assign(x,e'); m=m'; asmp=asmp'}::s)
+            oconfigs []), Eps)
 
   | Seq (c1,c2) ->
       (match c1 with
-      | Skip ->
-          Thread_output_config_set.singleton {c=c2; m=s.m; asmp=s.asmp}, Eps
+      | Skip -> [{c=c2; m=s.m; asmp=s.asmp}], Eps
       | _ ->
           let oconfigs, anno = step_thread {c=c1; time=s.time; m=s.m; asmp=s.asmp} in
-          (Thread_output_config_set.fold
+          (List.fold_right
             (fun {c=c'; m=m'; asmp=asmp'} s ->
-              Thread_output_config_set.add {c=Seq(c',c2); m=m'; asmp=asmp'} s)
-            oconfigs Thread_output_config_set.empty), anno)
+              {c=Seq(c',c2); m=m'; asmp=asmp'}::s)
+            oconfigs []), anno)
 
   | If (e,c1,c2) ->
       (match e with
@@ -97,58 +96,55 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
           (* x is true *)
           let (val_true, sym_true, asmp_true) = 
             add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
-          let true_set = if check asmp_true then Thread_output_config_set.singleton 
-              {c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}
-            else Thread_output_config_set.empty in
+          let true_set =
+            if check asmp_true then 
+              [{c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}]
+            else [] in
           (* x is false *)
           let (val_false, sym_false, asmp_false) = 
             add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
-          let false_set = if check asmp_false then Thread_output_config_set.singleton 
-              {c=c2; m=s.m; asmp={symbols=sym_false; assumptions=asmp_false}}
-            else Thread_output_config_set.empty in
-          (Thread_output_config_set.union true_set false_set, Eps)
+          let false_set =
+            if check asmp_false then 
+              [{c=c2; m=s.m; asmp={symbols=sym_false; assumptions=asmp_false}}]
+            else [] in
+          (true_set @ false_set, Eps)
 
       | Val (Conc x) -> let cnext = if x != 0 then c1 else c2 in
-          Thread_output_config_set.singleton {c=cnext; m=s.m; asmp=s.asmp}, Eps
+          [{c=cnext; m=s.m; asmp=s.asmp}], Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
             (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Thread_output_config_set.add {c=If(e',c1,c2); m=m'; asmp=asmp'} s)
-            oconfigs Thread_output_config_set.empty), Eps)
+              {c=If(e',c1,c2); m=m'; asmp=asmp'}::s)
+            oconfigs []), Eps)
 
   | While (e,c') ->
-      (Thread_output_config_set.singleton
-        {c=If(e,Seq(c',While(e,c')),Skip); m=s.m; asmp=s.asmp}), Eps
+      [{c=If(e,Seq(c',While(e,c')),Skip); m=s.m; asmp=s.asmp}], Eps
         
   | Fork (x,c') ->
       let id = Thread_pool.new_id () in
       let m' = Mem.write x (Conc id) s.time s.m in
-      Thread_output_config_set.singleton
-        {c=Skip; m=m'; asmp=s.asmp}, (Fork(id,c')) 
+      [{c=Skip; m=m'; asmp=s.asmp}], (Fork(id,c'))
 
   | Join e ->
       (match e with
-      | Val (Conc n) ->
-          Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Join n
+      | Val (Conc n) -> [{c=Skip; m=s.m; asmp=s.asmp}], Join n
       | Val _ -> raise (Runtime_exception "cannot join over a symbolic value")
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
             (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Thread_output_config_set.add {c=Join(e'); m=m'; asmp=asmp'} s)
-            oconfigs Thread_output_config_set.empty), Eps)
+              {c=Join(e'); m=m'; asmp=asmp'}::s)
+            oconfigs []), Eps)
 
-  | Lock x ->
-      Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Lock x
+  | Lock x -> [{c=Skip; m=s.m; asmp=s.asmp}], Lock x
 
-  | Unlock x ->
-      Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Unlock x
+  | Unlock x -> [{c=Skip; m=s.m; asmp=s.asmp}], Unlock x
 
   | Symbolic x -> (let (new_sym, new_symbols) = make_sym x s.asmp.symbols in
       let new_mem = Mem.write x new_sym s.time s.m in
       let new_assumption_set = {symbols=new_symbols; assumptions=s.asmp.assumptions} in
-      Thread_output_config_set.singleton {c=Skip; m=new_mem; asmp=new_assumption_set}, Eps)
+      [{c=Skip; m=new_mem; asmp=new_assumption_set}], Eps)
 
   | Assert e ->
       (let handle_failure asmp =
@@ -156,8 +152,8 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
         Sym_error.report (Sym_error.Assert e) s.m asmp in 
       match e with
         Val (Conc x) -> if x == 0 then
-            (handle_failure s.asmp; Thread_output_config_set.empty, Deadend)
-          else (Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=s.asmp}, Eps)
+            (handle_failure s.asmp; [], Deadend)
+          else ([{c=Skip; m=s.m; asmp=s.asmp}], Eps)
       | Val symv -> let (_, sym_false, asmp_false) = 
           add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
           if (check asmp_false) then
@@ -166,40 +162,39 @@ let rec step_thread (s:thread_input_config) : Thread_output_config_set.t*annotat
             add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
           if (check asmp_true) then
             let asmp' = {symbols=sym_true; assumptions=asmp_true} in
-            Thread_output_config_set.singleton {c=Skip; m=s.m; asmp=asmp'}, Eps
-          else Thread_output_config_set.empty, Deadend
+            [{c=Skip; m=s.m; asmp=asmp'}], Eps
+          else [], Deadend
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
             (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Thread_output_config_set.add {c=Assert(e');m=m';asmp=asmp'} s)
-            oconfigs Thread_output_config_set.empty), Eps)
+              {c=Assert(e');m=m';asmp=asmp'}::s)
+            oconfigs []), Eps)
 
 (******************************************************************************)
 
-let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
+let from_singleton_list = function [x] -> x | _ -> assert false
+
+let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
   let r, tp' = Thread_pool.choose s.tp in
   match r with
-  | None -> Thread_pool_config_set.empty
+  | None -> []
   | Some (id,(Skip,_)) -> assert false
   | Some (id,(c,time)) ->
       let iconfig = {c; time; m=s.m; asmp=s.asmp} in
       let oconfigs,anno = step_thread iconfig in
       match anno with
       | Fork (id',c') ->
-          assert (Thread_output_config_set.cardinal oconfigs = 1);
-          let oconfig = Thread_output_config_set.choose oconfigs in
+          let oconfig = from_singleton_list oconfigs in 
           assert (oconfig.asmp = s.asmp);
           let time_for_id = Clock.inc id time in
           let time_for_id' = Clock.inc id' time in
           let tp'' = Thread_pool.update id' (c',time_for_id')
             (Thread_pool.update id (oconfig.c,time_for_id) tp') in
-          Thread_pool_config_set.singleton
-            {tp=tp''; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp}
+          [{tp=tp''; m=oconfig.m; ls=s.ls; asmp=oconfig.asmp}]
 
       | Join id' ->
-          assert (Thread_output_config_set.cardinal oconfigs = 1);
-          let oconfig = Thread_output_config_set.choose oconfigs in
+          let oconfig = from_singleton_list oconfigs in 
           assert (oconfig.asmp = s.asmp);
           assert (oconfig.m = iconfig.m);
           let (c',time') = Thread_pool.lookup id' tp' in
@@ -212,11 +207,10 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
                 (* can't progress *)
                 let tp'' = Thread_pool.update id (c, time) tp' in
                 {tp=tp''; m=s.m; ls=s.ls; asmp=s.asmp} in
-          Thread_pool_config_set.singleton r
+          [r]
           
       | Lock x ->
-          assert (Thread_output_config_set.cardinal oconfigs = 1);
-          let oconfig = Thread_output_config_set.choose oconfigs in
+          let oconfig = from_singleton_list oconfigs in 
           assert (oconfig.asmp = s.asmp);
           assert (oconfig.m = iconfig.m);
           let owner,cnt,time' = Lock_state.lookup x s.ls in
@@ -229,11 +223,10 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
             (* can't progress *)
             let tp'' = Thread_pool.update id (c, time) tp' in
             {tp=tp''; m=s.m; ls=s.ls; asmp=s.asmp} in
-          Thread_pool_config_set.singleton r
+          [r]
 
       | Unlock x ->
-          assert (Thread_output_config_set.cardinal oconfigs = 1);
-          let oconfig = Thread_output_config_set.choose oconfigs in
+          let oconfig = from_singleton_list oconfigs in 
           assert (oconfig.asmp = s.asmp);
           assert (oconfig.m = iconfig.m);
           let owner,cnt,_ = Lock_state.lookup x s.ls in
@@ -247,41 +240,39 @@ let step_thread_pool (s:thread_pool_config) : Thread_pool_config_set.t =
               Lock_state.update x (owner',cnt',time) s.ls in
           let tp'' = Thread_pool.update id (oconfig.c,Clock.inc id time) tp' in
           let r = {tp=tp''; m=oconfig.m; ls=ls'; asmp=oconfig.asmp} in
-          Thread_pool_config_set.singleton r
+          [r]
 
       | Eps ->
-          (* TODO this fits semantics in adversarial memory paper, but not ours *)
-          let time' = time in
-          Thread_output_config_set.fold
+          (* TODO we are currently not incrementing the time here. This matches
+           * the adversarial memory paper semantics but not ours *)
+          List.fold_right
             (fun {c=c'; m=m'; asmp=asmp'} a ->
-              let tp'' = Thread_pool.update id (c',time') tp' in
-              Thread_pool_config_set.add
-                {tp=tp''; m=m'; ls=s.ls; asmp=asmp'} a)
-            oconfigs Thread_pool_config_set.empty
+              let tp'' = Thread_pool.update id (c',time) tp' in 
+              {tp=tp''; m=m'; ls=s.ls; asmp=asmp'}::a)
+            oconfigs []
 
-      | Deadend -> Thread_pool_config_set.empty
+      | Deadend -> []
 
 (******************************************************************************)
 
-let step_sym_exec (s:Thread_pool_config_set.t) : Thread_pool_config_set.t =
-  let e = Thread_pool_config_set.choose s in
+let step_sym_exec (s:thread_pool_config Queue.t) : unit =
+  let e = Queue.take s in
   let new_states = step_thread_pool e in
-  let s' = Thread_pool_config_set.remove e s
-  in Thread_pool_config_set.union s' new_states
+  List.iter (fun s' -> Queue.add s' s) new_states 
 
 (******************************************************************************)
 
 let run (p:program) =
-  let initial_state =
-    let id = Thread_pool.new_id () in
-    let tp = Thread_pool.update id (p,Clock.inc id Clock.bot) Thread_pool.initial in
-    let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
-                  asmp={symbols=TermMap.empty; assumptions=[]}} in
-    Thread_pool_config_set.singleton config in
-  let rec loop (s:Thread_pool_config_set.t) =
-    if not (Thread_pool_config_set.is_empty s)
+  let id = Thread_pool.new_id () in
+  let tp = Thread_pool.update id (p,Clock.inc id Clock.bot) Thread_pool.initial in
+  let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
+                asmp={symbols=TermMap.empty; assumptions=[]}} in
+  let s = Queue.create () in
+  Queue.add config s; 
+  let rec loop () =
+    if not (Queue.is_empty s)
     then loop (step_sym_exec s) in
-  loop initial_state
+  loop ()
 
 (* Copied directly from CS 153 material. *)
 let parse_file () =

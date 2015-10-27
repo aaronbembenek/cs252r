@@ -15,12 +15,7 @@ module Weak_mem_model : MEM_MODEL =
   struct
     let read x time m =
       let writes = Mem.lookup x m in
-      (*
-      Printf.eprintf "var %s\n" x;
-      List.iter (fun (Conc v,c) ->
-        Printf.eprintf "value: %d\n" v;
-        Clock.print stderr c) writes;
-        *)
+      (* TODO this is slow... *)
       let rec loop writes lookedat acc =
         match writes with
         | [] -> acc 
