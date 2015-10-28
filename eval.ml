@@ -94,17 +94,17 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       (match e with
       | Val (Sym x) -> 
           (* x is true *)
-          let (val_true, sym_true, asmp_true) = 
+          let (_, sym_true, asmp_true) = 
             add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
           let true_set =
-            if check asmp_true then 
+            if check asmp_true then
               [{c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}]
             else [] in
           (* x is false *)
-          let (val_false, sym_false, asmp_false) = 
+          let (_, sym_false, asmp_false) = 
             add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
           let false_set =
-            if check asmp_false then 
+            if check asmp_false then
               [{c=c2; m=s.m; asmp={symbols=sym_false; assumptions=asmp_false}}]
             else [] in
           (true_set @ false_set, Eps)
