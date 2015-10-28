@@ -8,8 +8,8 @@ type error =
 
 let error_to_json (e:error) : string*json =
   match e with
-  | Assert _ -> "failed assertion", `Null
-  | Div_by_zero _ -> "division by zero", `Null
+  | Assert exp -> "failed assertion", `String (Prettyprint.pp_exp exp)
+  | Div_by_zero exp -> "division by zero", `String (Prettyprint.pp_exp exp)
 
 let accum = ref []
 

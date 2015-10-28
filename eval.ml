@@ -146,10 +146,10 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       let new_assumption_set = {symbols=new_symbols; assumptions=s.asmp.assumptions} in
       [{c=Skip; m=new_mem; asmp=new_assumption_set}], Eps)
 
-  | Assert e ->
+  | Assert (e,original) ->
       (let handle_failure asmp =
         Printf.eprintf "\027[91mASSERT FAILED\027[0m\n";
-        Sym_error.report (Sym_error.Assert e) s.m asmp in 
+        Sym_error.report (Sym_error.Assert original) s.m asmp in 
       match e with
         Val (Conc x) -> if x == 0 then
             (handle_failure s.asmp; [], Deadend)
@@ -168,7 +168,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
             (fun {e=e'; m=m'; asmp=asmp'} s ->
-              {c=Assert(e');m=m';asmp=asmp'}::s)
+              {c=Assert(e',original);m=m';asmp=asmp'}::s)
             oconfigs []), Eps)
 
 (******************************************************************************)

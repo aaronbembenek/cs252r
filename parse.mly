@@ -90,4 +90,4 @@ cmd:
   | cmd SEMICOLON                 { Ast.Seq($1, Ast.Skip) }
   | cmd SEMICOLON cmd             { Ast.Seq($1, $3) }
   | SYMBOLIC ID                   { Ast.Symbolic($2) }
-  | ASSERT exp                    { Ast.Assert($2) }
+  | ASSERT exp                    { Ast.Assert($2,$2) }

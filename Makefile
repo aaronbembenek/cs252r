@@ -16,7 +16,7 @@ all:
 	$(COMPILER) -c eval.ml
 	ocamlfind $(COMPILER) -o interp -linkpkg -package aez -package yojson \
 		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo \
-		sym_error.cmo eval.cmo
+		prettyprint.cmo sym_error.cmo eval.cmo
 	#ocamlfind $(COMPILER) -o solve -linkpkg -package aez assumptions.ml
 
 test:

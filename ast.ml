@@ -34,6 +34,6 @@ type cmd =
 | Lock of var
 | Unlock of var
 | Symbolic of var
-| Assert of exp
+| Assert of exp * exp
 
 type program = cmd
