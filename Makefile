@@ -21,6 +21,6 @@ test:
 	python test.py
 
 clean:
-	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp solve
+	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp
 
 .PHONY: test clean

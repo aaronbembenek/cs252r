@@ -55,23 +55,33 @@ let add_binop_assumption (x : value) (y : value) (symbols : termMap)
     | Sub -> F.make_lit F.Eq [tz; T.make_arith T.Minus tx ty]
     | Mul -> F.make_lit F.Eq [tz; T.make_arith T.Mult tx ty]
     | Div -> F.make_lit F.Eq [tz; T.make_arith T.Div tx ty]
-    | Eq -> F.make_lit F.Eq [tx; ty]
-    | Neq -> F.make_lit F.Neq [tx; ty]
-    | Lt -> F.make_lit F.Lt [tx; ty]
-    | Lte -> F.make_lit F.Le [tx; ty]
-    | Gt -> F.make F.Not [F.make_lit F.Le [tx; ty]]
-    | Gte -> F.make F.Not [F.make_lit F.Lt [tx; ty]]
-    | And -> F.make F.And [F.make_lit F.Neq [tx; zero];
-        F.make_lit F.Neq [ty; zero]]
-    | Or -> F.make F.Or [F.make_lit F.Neq [tx; zero];
-        F.make_lit F.Neq [ty; zero]]
+    | _ -> let f = (match b with
+        Eq -> F.make_lit F.Eq [tx; ty]
+      | Neq -> F.make_lit F.Neq [tx; ty]
+      | Lt -> F.make_lit F.Lt [tx; ty]
+      | Lte -> F.make_lit F.Le [tx; ty]
+      | Gt -> F.make F.Not [F.make_lit F.Le [tx; ty]]
+      | Gte -> F.make F.Not [F.make_lit F.Lt [tx; ty]]
+      | And -> F.make F.And [F.make_lit F.Neq [tx; zero];
+          F.make_lit F.Neq [ty; zero]]
+      | Or -> F.make F.Or [F.make_lit F.Neq [tx; zero];
+          F.make_lit F.Neq [ty; zero]]
+      | _ -> assert false) in
+      F.make_lit F.Eq [tz; T.make_ite f one zero]
     ) in
   (new_sym, new_symbols, assumps @ [assump])
 ;;
 
+let add_if_assumption (x : value) (b : bool) (symbols : termMap)
+    (assumps : assumptions) : assumptions =
+  let tx = get_term x symbols in
+  let assump = 
+    (if b then F.make_lit F.Neq [tx; zero] else F.make_lit F.Eq [tx; zero]) in
+  assumps @ [assump]
+;;
+
 (* Debugging! *)
 let rec print_formulas (assumptions : Smt.Formula.t list) : unit =
-  print_string "I am formulas!\n";
   match assumptions with
     [] -> ()
   | hd::tl -> Smt.Formula.print Format.std_formatter hd; 
@@ -94,7 +104,3 @@ let check (assumptions : Smt.Formula.t list) : bool =
   with Unsat _ ->
     false
 ;;
-
-(*match (check assumptions) with
-  true -> print_endline "valid"
-| false -> print_endline "not valid"*)

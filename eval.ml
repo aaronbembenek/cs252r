@@ -94,23 +94,22 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       (match e with
       | Val (Sym x) -> 
           (* x is true *)
-          let (_, sym_true, asmp_true) = 
-            add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
+          let asmp_true = add_if_assumption (Sym x) true s.asmp.symbols s.asmp.assumptions in
           let true_set =
             if check asmp_true then
-              [{c=c1; m=s.m; asmp={symbols=sym_true; assumptions=asmp_true}}]
+              [{c=c1; m=s.m; asmp={symbols=s.asmp.symbols; assumptions=asmp_true}}]
             else [] in
           (* x is false *)
-          let (_, sym_false, asmp_false) = 
-            add_binop_assumption (Sym x) (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
+          let asmp_false = add_if_assumption (Sym x) false s.asmp.symbols s.asmp.assumptions in
           let false_set =
             if check asmp_false then
-              [{c=c2; m=s.m; asmp={symbols=sym_false; assumptions=asmp_false}}]
+              [{c=c2; m=s.m; asmp={symbols=s.asmp.symbols; assumptions=asmp_false}}]
             else [] in
           (true_set @ false_set, Eps)
 
       | Val (Conc x) -> let cnext = if x != 0 then c1 else c2 in
           [{c=cnext; m=s.m; asmp=s.asmp}], Eps
+
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
@@ -154,14 +153,13 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
         Val (Conc x) -> if x == 0 then
             (handle_failure s.asmp; [], Deadend)
           else ([{c=Skip; m=s.m; asmp=s.asmp}], Eps)
-      | Val symv -> let (_, sym_false, asmp_false) = 
-          add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Eq in
+      | Val symv -> 
+          let asmp_false = add_if_assumption symv false s.asmp.symbols s.asmp.assumptions in
           if (check asmp_false) then
-            handle_failure {symbols=sym_false; assumptions=asmp_false};
-          let (_, sym_true, asmp_true) =
-            add_binop_assumption symv (Conc 0) s.asmp.symbols s.asmp.assumptions Neq in
+            handle_failure {symbols=s.asmp.symbols; assumptions=asmp_false};
+          let asmp_true = add_if_assumption symv true s.asmp.symbols s.asmp.assumptions in
           if (check asmp_true) then
-            let asmp' = {symbols=sym_true; assumptions=asmp_true} in
+            let asmp' = {symbols=s.asmp.symbols; assumptions=asmp_true} in
             [{c=Skip; m=s.m; asmp=asmp'}], Eps
           else [], Deadend
       | _ ->
