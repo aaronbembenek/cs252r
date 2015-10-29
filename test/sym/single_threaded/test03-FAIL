@@ -1,0 +1,2 @@
+symbolic x;
+if x then {assert 1} else {assert x} fi;

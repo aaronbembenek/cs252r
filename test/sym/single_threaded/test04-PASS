@@ -1,0 +1,2 @@
+symbolic x;
+if (x != 5) then {assert x - 5} else {assert 1} fi;
