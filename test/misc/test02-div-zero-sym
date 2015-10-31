@@ -1,0 +1,2 @@
+symbolic y;
+x = 10 / y;
