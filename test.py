@@ -5,7 +5,8 @@ executable = "./interp"
 tst_dirs = [
     os.path.join("test", "conc", "single_threaded"),
     os.path.join("test", "conc", "multi_threaded"),
-    os.path.join("test", "sym", "single_threaded")
+    os.path.join("test", "sym", "single_threaded"),
+    os.path.join("test", "sym", "multi_threaded"),
     ]
 
 passed = "\033[92mPASSED\033[0m"
