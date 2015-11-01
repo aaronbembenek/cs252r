@@ -11,7 +11,6 @@ let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
     Add -> i1 + i2
   | Sub -> i1 - i2
   | Mul -> i1 * i2
-  (* TODO: check for divide by zero error *)
   | Div -> i1 / i2
   | _ -> let result = (match b with
       Eq -> i1 == i2
@@ -35,12 +34,13 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
       match e1,e2 with
       (* first case: both exps are values, so compute binop *)
       | Val v1, Val v2 -> 
-          (match v1, v2 with
+          (if (Sym_error.is_div_by_zero v1 b v2 asmp.symbols asmp.assumptions)
+          then Exp_output_config_set.empty
+          else match v1, v2 with
           (* both values are concrete *)
           | Conc i1, Conc i2 ->
               Exp_output_config_set.singleton {e=Val(Conc(eval_conc_binop i1 i2 b)); m; asmp}
           (* at least one value is symbolic *)
-          (* TODO: check for divide by zero error *)
           | _ -> let (new_sym, new_symbols, new_assumptions) = 
                 add_binop_assumption v1 v2 asmp.symbols asmp.assumptions b in
               let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
