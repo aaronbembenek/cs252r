@@ -28,8 +28,6 @@ rule lexer = parse
 | digit+            { INT(int_of_string(Lexing.lexeme lexbuf)) }
 | "symbolic"        { SYMBOLIC }
 | "assert"          { ASSERT }
-| "true"            { TRUE }
-| "false"           { FALSE }
 | "skip"            { SKIP }
 | "if"              { IF }
 | "fi"              { FI }

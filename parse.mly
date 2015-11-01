@@ -27,7 +27,6 @@ let parse_error s =
 %token <string> ID
 %token SYMBOLIC
 %token ASSERT
-%token TRUE FALSE
 %token SKIP
 %token IF THEN ELSE FI
 %token WHILE DO
@@ -40,29 +39,27 @@ let parse_error s =
 %token ASSIGN
 %token LBRACE RBRACE LPAREN RPAREN 
 %token SEMICOLON
-%token RETURN
 %token DONE
 
-%right IF THEN ELSE FI
-%right WHILE DO DONE
-%right FORK JOIN
-%right LOCK UNLOCK
-%left PLUS MINUS
-%left TIMES DIVIDE
 %right AND OR
 %right EQ NEQ LT LTE GT GTE
-%right ASSIGN
-%right LBRACE RBRACE LPAREN RPAREN 
-%left SEMICOLON
+%left PLUS MINUS
+%left TIMES DIVIDE
+%right SEMICOLON
 
 %%
 
 program:
   cmd EOF  { $1 }
 
-exp:
+primary:
     ID                { Ast.Var($1) }
   | INT               { Ast.Val(Conc($1)) }
+  | LPAREN exp RPAREN { ($2) }
+
+exp:
+    primary           { $1 }
+  | MINUS primary     { Ast.Binop($2, Ast.Mul, Ast.Val(Conc(-1))) }
   | exp PLUS exp      { Ast.Binop($1, Ast.Add, $3) }
   | exp MINUS exp     { Ast.Binop($1, Ast.Sub, $3) }
   | exp TIMES exp     { Ast.Binop($1, Ast.Mul, $3) }
@@ -75,7 +72,6 @@ exp:
   | exp LTE exp       { Ast.Binop($1, Ast.Lte, $3) }
   | exp GT exp        { Ast.Binop($1, Ast.Gt, $3) }
   | exp GTE exp       { Ast.Binop($1, Ast.Gte, $3) }
-  | LPAREN exp RPAREN { ($2) }
 
 cmd:
     SKIP                          { Ast.Skip }
