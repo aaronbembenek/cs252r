@@ -44,23 +44,23 @@ let rec step_exp ({e; time; m; asmp}:exp_input_config) : Exp_output_config_set.t
           | _ -> let (new_sym, new_symbols, new_assumptions) = 
                 add_binop_assumption v1 v2 asmp.symbols asmp.assumptions b in
               let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
-              Exp_output_config_set.singleton {e=Val(new_sym); m=m; asmp=new_assumption_set}
+              Exp_output_config_set.singleton {e=Val(new_sym); m; asmp=new_assumption_set}
           )
 
       (* second case: first exp is a value but second is not, so take step with second *)
       | Val _, _ ->
           let oconfigs = step_exp {e=e2; time; m; asmp} in
           Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Exp_output_config_set.add {e=Binop(e1,b,e'); m=m'; asmp=asmp'} s)
+            (fun conf s ->
+              Exp_output_config_set.add {conf with e=Binop(e1,b,conf.e)} s)
             oconfigs Exp_output_config_set.empty 
 
       (* third case: first exp is not a value, so take step with first *)
       | _ ->
           let oconfigs = step_exp {e=e1; time; m; asmp} in
           Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              Exp_output_config_set.add {e=Binop(e',b,e2); m=m'; asmp=asmp'} s)
+            (fun conf s ->
+              Exp_output_config_set.add {conf with e=Binop(conf.e,b,e2)} s)
             oconfigs Exp_output_config_set.empty 
 
 (******************************************************************************)
@@ -76,8 +76,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              {c=Assign(x,e'); m=m'; asmp=asmp'}::s)
+            (fun {e; m; asmp} s -> {c=Assign(x,e); m; asmp}::s)
             oconfigs []), Eps)
 
   | Seq (c1,c2) ->
@@ -86,8 +85,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       | _ ->
           let oconfigs, anno = step_thread {c=c1; time=s.time; m=s.m; asmp=s.asmp} in
           (List.fold_right
-            (fun {c=c'; m=m'; asmp=asmp'} s ->
-              {c=Seq(c',c2); m=m'; asmp=asmp'}::s)
+            (fun conf s -> {conf with c=Seq(conf.c,c2)}::s)
             oconfigs []), anno)
 
   | If (e,c1,c2) ->
@@ -113,8 +111,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              {c=If(e',c1,c2); m=m'; asmp=asmp'}::s)
+            (fun {e; m; asmp} s -> {c=If(e,c1,c2); m; asmp}::s)
             oconfigs []), Eps)
 
   | While (e,c') ->
@@ -132,8 +129,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              {c=Join(e'); m=m'; asmp=asmp'}::s)
+            (fun {e; m; asmp} s -> {c=Join(e); m; asmp}::s)
             oconfigs []), Eps)
 
   | Lock x -> [{c=Skip; m=s.m; asmp=s.asmp}], Lock x
@@ -165,8 +161,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
           (Exp_output_config_set.fold
-            (fun {e=e'; m=m'; asmp=asmp'} s ->
-              {c=Assert(e',original);m=m';asmp=asmp'}::s)
+            (fun {e; m; asmp} s -> {c=Assert(e,original); m; asmp}::s)
             oconfigs []), Eps)
 
 (******************************************************************************)
@@ -204,7 +199,7 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
             | _ ->
                 (* can't progress *)
                 let tp'' = Thread_pool.update id (c, time) tp' in
-                {tp=tp''; m=s.m; ls=s.ls; asmp=s.asmp} in
+                {s with tp=tp''} in
           [r]
           
       | Lock x ->
@@ -220,7 +215,7 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
           else
             (* can't progress *)
             let tp'' = Thread_pool.update id (c, time) tp' in
-            {tp=tp''; m=s.m; ls=s.ls; asmp=s.asmp} in
+            {s with tp=tp''} in
           [r]
 
       | Unlock x ->
@@ -244,9 +239,9 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
           (* TODO we are currently not incrementing the time here. This matches
            * the adversarial memory paper semantics but not ours *)
           List.fold_right
-            (fun {c=c'; m=m'; asmp=asmp'} a ->
-              let tp'' = Thread_pool.update id (c',time) tp' in 
-              {tp=tp''; m=m'; ls=s.ls; asmp=asmp'}::a)
+            (fun {c; m; asmp} a ->
+              let tp'' = Thread_pool.update id (c,time) tp' in 
+              {tp=tp''; m; ls=s.ls; asmp}::a)
             oconfigs []
 
       | Deadend -> []
@@ -263,7 +258,7 @@ let step_sym_exec (s:thread_pool_config Queue.t) : unit =
 let run (p:program) =
   let id = Thread_pool.new_id () in
   let tp = Thread_pool.update id (p,Clock.inc id Clock.bot) Thread_pool.initial in
-  let config = {tp=tp; m=Mem.empty; ls=Lock_state.initial;
+  let config = {tp; m=Mem.empty; ls=Lock_state.initial;
                 asmp={symbols=TermMap.empty; assumptions=[]}} in
   let s = Queue.create () in
   Queue.add config s; 
