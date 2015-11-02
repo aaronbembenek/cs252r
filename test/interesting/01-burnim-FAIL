@@ -1,0 +1,12 @@
+x = 0;
+y = 0;
+
+fork z do
+	x = 1;
+	t1 = y;
+done;
+
+y = 2;
+t2 = x;
+
+assert (t1 == 1 || t2 == 1);
