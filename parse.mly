@@ -40,11 +40,13 @@ let parse_error s =
 %token LBRACE RBRACE LPAREN RPAREN 
 %token SEMICOLON
 %token DONE
+%token NOT
 
 %right AND OR
 %right EQ NEQ LT LTE GT GTE
 %left PLUS MINUS
 %left TIMES DIVIDE
+%right NOT
 %right SEMICOLON
 
 %%
@@ -72,6 +74,7 @@ exp:
   | exp LTE exp       { Ast.Binop($1, Ast.Lte, $3) }
   | exp GT exp        { Ast.Binop($1, Ast.Gt, $3) }
   | exp GTE exp       { Ast.Binop($1, Ast.Gte, $3) }
+  | NOT exp           { Ast.Binop($2, Ast.Eq, Ast.Val(Conc(0))) }
 
 cmd:
     SKIP                          { Ast.Skip }

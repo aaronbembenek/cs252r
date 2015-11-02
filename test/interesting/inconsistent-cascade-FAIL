@@ -1,0 +1,23 @@
+fork t0 do
+  a = 1;
+done;
+while i < 0 do i = i + 1; done;
+fork t1 do
+  if a == 1 then
+    b = 1;
+  else
+    skip;
+  fi;
+done;
+while j < 0 do j = j + 1; done;
+fork t2 do
+  if b == 1 then
+    reg1 = a;
+  else
+    skip;
+  fi;
+done;
+join t0;
+join t1;
+join t2;
+assert !(b == 1 && reg1 == 0);

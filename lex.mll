@@ -41,6 +41,7 @@ rule lexer = parse
 | "lock"            { LOCK }
 | "unlock"          { UNLOCK }
 | identifier as id  { ID(id) }
+| "!"               { NOT }
 | "+"               { PLUS }
 | "-"               { MINUS }
 | "*"               { TIMES }
