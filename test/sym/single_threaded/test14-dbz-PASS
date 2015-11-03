@@ -1,0 +1,7 @@
+symbolic y;
+
+if (y != 0) then { 
+	x = 10 / y;
+} else {
+	x = 10;
+} fi;
