@@ -1,7 +1,7 @@
+open Assumptions
 open Ast
 open State
 open Yojson.Basic
-open Assumptions
 
 type event =
   | Assert_fail of pos 

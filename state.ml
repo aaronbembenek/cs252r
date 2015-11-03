@@ -1,11 +1,6 @@
 open Ast
 open Assumptions
 
-type assumption_set = {
-  symbols     : termMap;
-  assumptions : assumptions;
-}
-
 (* thread identifiers *)
 type tid = int
 

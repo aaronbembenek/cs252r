@@ -25,6 +25,11 @@ let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
     if result then 1 else 0
 
 let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_config_set.t =
+  let is_div_by_zero (b:binop) (v2:value) (asmp:assumption_set) : bool =
+    match b, v2 with
+      Div, Conc x -> x == 0
+    | Div, Sym x -> check (add_if_assumption (Sym x) false asmp.symbols asmp.assumptions)
+    | _ -> false in
   match e with
   | Val _ -> assert false (* should never be reached *)
   | Var x ->
@@ -35,8 +40,7 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
       match e1,e2 with
       (* first case: both exps are values, so compute binop *)
       | Val v1, Val v2 -> 
-          if is_div_by_zero v1 b v2 asmp.symbols asmp.assumptions
-          then
+          if is_div_by_zero b v2 asmp then
             (Printf.eprintf "\027[91mDIVISION BY ZERO: line %d\027[0m\n" pos;
             Log.report (Log.Div_by_zero pos) m asmp;
             Exp_output_config_set.empty)
