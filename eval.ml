@@ -37,7 +37,8 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
       | Val v1, Val v2 -> 
           if is_div_by_zero v1 b v2 asmp.symbols asmp.assumptions
           then
-            (Log.report (Log.Div_by_zero pos) m asmp;
+            (Printf.eprintf "\027[91mDIVISION BY ZERO: line %d\027[0m\n" pos;
+            Log.report (Log.Div_by_zero pos) m asmp;
             Exp_output_config_set.empty)
           else (match v1, v2 with
           (* both values are concrete *)
@@ -147,7 +148,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
 
   | Assert (e) ->
       (let handle_failure asmp =
-        Printf.eprintf "\027[91mASSERT FAILED\027[0m\n";
+        Printf.eprintf "\027[91mASSERT FAILED: line %d\027[0m\n" pos;
         Log.report (Log.Assert_fail pos) s.m asmp in 
       match e with
         Val (Conc x),_ -> if x == 0 then
