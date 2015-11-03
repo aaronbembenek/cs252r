@@ -104,3 +104,9 @@ let check (assumptions : Smt.Formula.t list) : bool =
   with Unsat _ ->
     false
 ;;
+
+let is_div_by_zero (v1:value) (b:binop) (v2:value) (syms:termMap) (assumps:assumptions) : bool =
+	match b, v2 with
+		Div, Conc x -> x == 0
+	| Div, Sym x -> check (add_if_assumption (Sym x) false syms assumps)
+	| _ -> false

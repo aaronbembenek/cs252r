@@ -1,4 +1,5 @@
 type var = string
+type pos = int
 
 type binop =
   Add
@@ -18,12 +19,13 @@ type value =
   Sym of var
 | Conc of int
 
-type exp =
+type rexp =
   Var of var
 | Val of value
 | Binop of exp * binop * exp
+and exp = rexp*pos
 
-type cmd =
+type rcmd =
   Skip
 | Assign of var * exp
 | Seq of cmd * cmd
@@ -34,6 +36,7 @@ type cmd =
 | Lock of var
 | Unlock of var
 | Symbolic of var
-| Assert of exp * exp
+| Assert of exp
+and cmd = rcmd*pos
 
 type program = cmd

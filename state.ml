@@ -168,12 +168,12 @@ module Map_thread_pool : THREAD_POOL =
       let map = Tid_map.add id (c,time) t.map in
       let active =
         match c with 
-        | Skip -> t.active
+        | Skip,_ -> t.active
         | _ -> ListQueue.enqueue id t.active in
       {map; active}
 
     let lookup id t =
-        try Tid_map.find id t.map with Not_found -> (Skip,Clock.bot)
+        try Tid_map.find id t.map with Not_found -> ((Skip,0),Clock.bot)
 
     let cur_id = ref 0
     let new_id () = let id = !cur_id in cur_id := !cur_id + 1; id
