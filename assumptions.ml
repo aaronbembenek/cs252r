@@ -104,3 +104,8 @@ let check (assumptions : Smt.Formula.t list) : bool =
   with Unsat _ ->
     false
 ;;
+
+type assumption_set = {
+  symbols     : termMap;
+  assumptions : assumptions;
+}

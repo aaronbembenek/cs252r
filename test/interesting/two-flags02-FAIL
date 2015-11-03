@@ -1,0 +1,16 @@
+/* TODO not sure exactly what the point of this is */
+fork u do
+  flag1 = 1;
+  a = 1;
+  reg1 = a;
+  reg2 = flag2;
+done;
+fork v do
+  flag2 = 1;
+  a = 2;
+  reg3 = a;
+  reg4 = flag1;
+done;
+join u;
+join v;
+assert !(reg1 == 1 && reg2 == 0 && reg3 == 2 && reg4 == 0);

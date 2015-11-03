@@ -11,11 +11,11 @@ all:
 	$(COMPILER) -c parse.ml
 	ocamllex lex.mll
 	$(COMPILER) -c lex.ml
-	ocamlfind $(COMPILER) -c -linkpkg -package yojson sym_error.ml
+	ocamlfind $(COMPILER) -c -linkpkg -package yojson log.ml
 	$(COMPILER) -c eval.ml
 	ocamlfind $(COMPILER) -o interp -linkpkg -package aez -package yojson \
 		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo \
-		prettyprint.cmo sym_error.cmo eval.cmo
+		prettyprint.cmo log.cmo eval.cmo
 
 test:
 	python test.py

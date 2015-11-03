@@ -1,6 +1,6 @@
 open Ast
 
-let rec pp_exp (e:exp) : string =
+let rec pp_exp ((e,_):exp) : string =
   let pp_binop = function
     | Add -> "+"
     | Sub -> "-"

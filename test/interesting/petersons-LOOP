@@ -1,0 +1,33 @@
+fork t0 do
+  flag0 = 1;
+  turn = 1;
+  while flag1 == 1 && turn == 1 do
+    skip;
+  done;
+  /* begin critical section */
+  while i < 10 do
+    x = x + 1;
+    i = i + 1;
+  done;
+  /* end critical section */
+  flag0 = 0;
+done;
+
+fork t1 do
+  flag1 = 1;
+  turn = 0;
+  while flag0 == 1 && turn == 0 do
+    skip;
+  done;
+  /* begin critical section */
+  while j < 10 do
+    x = x + 1;
+    j = j + 1;
+  done;
+  /* end critical section */
+  flag1 = 0;
+done;
+
+join t0;
+join t1;
+assert x == 20;
