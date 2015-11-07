@@ -28,5 +28,10 @@ module Weak_mem_model : MEM_MODEL =
       loop writes [] Value_set.empty
   end
 
-(* module Mem_model = Sequential_mem_model *)
+#ifdef SEQ 
+module Mem_model = Sequential_mem_model
+#elif defined WEAK 
 module Mem_model = Weak_mem_model
+#else
+#error "Must specify memory model to use at compile time."
+#endif
