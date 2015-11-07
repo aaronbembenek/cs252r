@@ -1,0 +1,19 @@
+x = 0;
+y = 0;
+d = 0;
+
+fork z do
+	x = 1;
+	y = 1;
+	d = 1;
+done;
+
+/* To account for scheduling! */
+i = 0;
+while (i < 10) do
+	i = i + 1;
+done;
+
+if (d == 1) then
+	if (x == 0) then assert 0; else t = y; fi;
+else h = 1 fi;
