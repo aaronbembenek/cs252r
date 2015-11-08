@@ -1,0 +1,12 @@
+x = 0;
+/* Only fails when y <= 10 */
+symbolic y;
+
+fork t1 do
+  x = x + 10;
+  assert x < y;
+done;
+
+fork t2 do
+  y = y + 20;
+done;
