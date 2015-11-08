@@ -44,11 +44,13 @@ let rec disjunction_helper (tz : Smt.Term.t) (symbols : termMap) (v : value)
   acc @ [F.make_lit F.Eq [tz; get_term v symbols]]
 ;;
 
-let rec add_disjunction (var : var) (vals : State.Value_set.t) (symbols : termMap)
-    (assumps : assumptions) : value * termMap * assumptions = 
+let add_read_disjunction (var : var) (vals : State.Value_set.t)
+    (symbols : termMap) (assumps : assumptions)
+    : value * termMap * assumptions = 
   let (new_sym, new_symbols) = get_new_sym symbols in
   let tz = get_term new_sym new_symbols in
-  let disjunction = State.Value_set.fold (disjunction_helper tz symbols) vals [] in
+  let disjunction = 
+    State.Value_set.fold (disjunction_helper tz symbols) vals [F.f_false] in
   (new_sym, new_symbols, assumps @ [F.make F.Or disjunction])
 ;;
 
