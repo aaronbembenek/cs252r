@@ -3,23 +3,19 @@ open Aez
 open Smt
 open Ast
 open Format
+open State
 module T = Term
 module F = Formula
 module Solver = Make (struct end)
 
 exception Runtime_exception of string
 
-module TermMap = Map.Make(String) ;;
-type termMap = Smt.Term.t TermMap.t ;;
-
-type assumptions = Smt.Formula.t list ;;
-
 let one = T.make_int (Num.Int 1) ;;
 let zero = T.make_int (Num.Int 0) ;;
 
 let counter = ref 0 ;;
 
-let make_sym (x : string) (symbols : termMap) : value * termMap =
+let make_sym (x : string) (symbols : State.termMap) : value * termMap =
   let new_symbols = (if TermMap.mem x symbols
     then symbols
     else let sym = Hstring.make x in
@@ -41,6 +37,19 @@ let get_term (x : value) (symbols : termMap) : Smt.Term.t =
       then TermMap.find v symbols
       else raise (Runtime_exception "uninitialized symbolic value"))
   | Conc i -> T.make_int (Num.Int i)
+;;
+
+let rec disjunction_helper (tz : Smt.Term.t) (symbols : termMap) (v : value)
+    (acc : assumptions) : assumptions =
+  acc @ [F.make_lit F.Eq [tz; get_term v symbols]]
+;;
+
+let rec add_disjunction (var : var) (vals : State.Value_set.t) (symbols : termMap)
+    (assumps : assumptions) : value * termMap * assumptions = 
+  let (new_sym, new_symbols) = get_new_sym symbols in
+  let tz = get_term new_sym new_symbols in
+  let disjunction = State.Value_set.fold (disjunction_helper tz symbols) vals [] in
+  (new_sym, new_symbols, assumps @ [F.make F.Or disjunction])
 ;;
 
 let add_binop_assumption (x : value) (y : value) (symbols : termMap)
@@ -104,8 +113,3 @@ let check (assumptions : Smt.Formula.t list) : bool =
   with Unsat _ ->
     false
 ;;
-
-type assumption_set = {
-  symbols     : termMap;
-  assumptions : assumptions;
-}
