@@ -1,5 +1,6 @@
 open Ast
-open Assumptions
+open Aez
+open Smt
 
 (* thread identifiers *)
 type tid = int
@@ -89,6 +90,20 @@ module Map_mem : MEM =
   end
 
 module Mem : MEM = Map_mem
+
+(******************************************************************************
+ * Assumptions
+ ******************************************************************************)
+
+module TermMap = Map.Make(String) ;;
+type termMap = Smt.Term.t TermMap.t ;;
+
+type assumptions = Smt.Formula.t list ;;
+
+type assumption_set = {
+  symbols     : termMap;
+  assumptions : assumptions;
+}
 
 (******************************************************************************
  * EXPRESSION-LEVEL STATE 

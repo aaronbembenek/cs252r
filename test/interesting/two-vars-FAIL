@@ -1,0 +1,15 @@
+x = 0;
+y = 0;
+
+fork t1 do
+  x = x + 30;
+  x = x + 20;
+  x = x + 10;
+  assert x < y;
+done;
+
+fork t2 do
+  y = y + 35;
+  y = y + 25;
+  y = y + 15;
+done;
