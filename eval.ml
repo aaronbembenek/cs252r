@@ -46,6 +46,7 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
       | Val v1, Val v2 -> 
           if is_div_by_zero b v2 asmp then
             (Printf.eprintf "\027[91mDIVISION BY ZERO: line %d\027[0m\n" pos;
+            flush stderr;
             Log.report (Log.Div_by_zero pos) m asmp;
             Exp_output_config_set.empty)
           else (match v1, v2 with
@@ -79,6 +80,10 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
 
 let rec step_thread (s:thread_input_config) : thread_output_config list*annotation =
   let (c,pos) = s.c in
+  (*
+  print_endline (Prettyprint.pp_cmd s.c);
+  let _ = read_line () in
+  *)
   match c with
   | Skip -> assert false (* should never be reached *)
 
@@ -157,6 +162,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
   | Assert (e) ->
       (let handle_failure asmp =
         Printf.eprintf "\027[91mASSERT FAILED: line %d\027[0m\n" pos;
+        flush stderr;
         Log.report (Log.Assert_fail pos) s.m asmp in 
       match e with
         Val (Conc x),_ -> if x == 0 then

@@ -16,7 +16,9 @@ let event_to_json (e:event) : string*json =
 let accum = ref []
   
 let report (e:event) (m:Mem.t) (asmp:assumption_set) : unit =
-  accum := (event_to_json e)::(!accum)
+  let e' = event_to_json e in
+  if not (List.mem e' !accum) then
+  accum := e'::(!accum)
 
 let dump (out:out_channel) : unit =
   pretty_to_channel out (`Assoc (List.rev !accum));
