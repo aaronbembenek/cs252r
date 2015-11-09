@@ -1,9 +1,12 @@
 COMPILER=ocamlc
 
+weaker:
+	make build MMODEL=WEAKER
+
 weak:
 	make build MMODEL=WEAK
 
-seq:
+sequential:
 	make build MMODEL=SEQ
 
 build:
@@ -20,8 +23,8 @@ build:
 	ocamlfind $(COMPILER) -c -linkpkg -package yojson log.ml
 	$(COMPILER) -c eval.ml
 	ocamlfind $(COMPILER) -o interp -linkpkg -package aez -package yojson \
-		ast.cmo state.cmo parse.cmo lex.cmo assumptions.cmo mmodel.cmo \
-		prettyprint.cmo log.cmo eval.cmo
+		ast.cmo prettyprint.cmo state.cmo parse.cmo lex.cmo assumptions.cmo \
+		mmodel.cmo log.cmo eval.cmo
 
 test:
 	python test.py
@@ -29,4 +32,4 @@ test:
 clean:
 	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp
 
-.PHONY: test clean build seq weak
+.PHONY: test clean build seq weak weaker

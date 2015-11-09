@@ -74,19 +74,22 @@ module type MEM =
   sig
     type t
     val empty : t
-    val lookup : var -> t -> (value*Clock.t) list
-    val write : var -> value -> Clock.t -> t -> t
+    val lookup : var -> t -> (value*Clock.t*tid) list
+    val write : var -> value -> Clock.t -> tid -> t -> t
   end
 
 module Map_mem : MEM =
   struct
-    type t = (value*Clock.t) list Var_map.t
+    type t = (value*Clock.t*tid) list Var_map.t
     let empty = Var_map.empty
-    let lookup (x : var) (m : t) : (value*Clock.t) list =
-      try Var_map.find x m with Not_found -> [(Conc 0,Clock.bot)]
+    let lookup (x : var) (m : t) : (value*Clock.t*tid) list =
+      try Var_map.find x m with Not_found -> [(Conc 0,Clock.bot,0)]
     (* TODO currently stores memory in newest-write-first order... okay? *)
-    let write (x : var) (v : value) (t : Clock.t) (m : t) : t =
-      let old = lookup x m in Var_map.add x ((v,t)::old) m
+    let write (x : var) (v : value) (t : Clock.t) (tid : tid) (m : t) : t =
+      (*
+      print_endline ((string_of_int tid)^" writing "^(Prettyprint.pp_exp (Val v,0))^" to "^x);
+      *)
+      let old = lookup x m in Var_map.add x ((v,t,tid)::old) m
   end
 
 module Mem : MEM = Map_mem

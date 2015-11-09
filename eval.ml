@@ -6,6 +6,8 @@ open State
 exception TODO
 exception Runtime_exception of string 
 
+let cur_tid : tid ref = ref 0
+
 let eval_conc_binop (i1:int) (i2:int) (b:binop) : int =
   match b with
     Add -> i1 + i2
@@ -32,7 +34,11 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
     | _ -> false in
   match e with
   | Val _ -> assert false (* should never be reached *)
-  | Var x -> let possible_reads : Value_set.t = Mem_model.read x time m in
+  | Var x -> let possible_reads : Value_set.t = Mem_model.read x time !cur_tid m in
+      (*
+      print_endline ("reading "^x);
+      Value_set.iter (fun v -> print_endline (Prettyprint.pp_exp (Val v, 0))) possible_reads;
+      *)
       if Value_set.cardinal possible_reads == 1
       then Value_set.fold (fun v s -> Exp_output_config_set.add {e=(Val(v), pos); m; asmp} s)
         possible_reads Exp_output_config_set.empty
@@ -90,7 +96,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
 
   | Assign (x,e) ->
       (match e with
-      | Val v,_ -> let new_mem = Mem.write x v s.time s.m in
+      | Val v,_ -> let new_mem = Mem.write x v s.time !cur_tid s.m in
           [{c=(Skip,pos); m=new_mem; asmp=s.asmp}], Eps
       | _ ->
           let oconfigs = step_exp {e; time=s.time; m=s.m; asmp=s.asmp} in
@@ -138,7 +144,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
         
   | Fork (x,c') ->
       let id = Thread_pool.new_id () in
-      let m' = Mem.write x (Conc id) s.time s.m in
+      let m' = Mem.write x (Conc id) s.time !cur_tid s.m in
       [{c=(Skip,pos); m=m'; asmp=s.asmp}], (Fork(id,c'))
 
   | Join e ->
@@ -156,7 +162,7 @@ let rec step_thread (s:thread_input_config) : thread_output_config list*annotati
   | Unlock x -> [{c=(Skip,pos); m=s.m; asmp=s.asmp}], Unlock x
 
   | Symbolic x -> (let (new_sym, new_symbols) = make_sym x s.asmp.symbols in
-      let new_mem = Mem.write x new_sym s.time s.m in
+      let new_mem = Mem.write x new_sym s.time !cur_tid s.m in
       let new_assumption_set = {symbols=new_symbols; assumptions=s.asmp.assumptions} in
       [{c=(Skip,pos); m=new_mem; asmp=new_assumption_set}], Eps)
 
@@ -194,6 +200,7 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
   | None -> []
   | Some (id,((Skip,_),_)) -> assert false
   | Some (id,(c,time)) ->
+      cur_tid := id;
       let iconfig = {c; time; m=s.m; asmp=s.asmp} in
       let oconfigs,anno = step_thread iconfig in
       match anno with
