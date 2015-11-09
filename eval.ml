@@ -32,13 +32,14 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
     | _ -> false in
   match e with
   | Val _ -> assert false (* should never be reached *)
-  | Var x -> Value_set.fold (fun v s -> Exp_output_config_set.add {e=(Val(v), pos); m; asmp} s)
-      (Mem_model.read x time m) Exp_output_config_set.empty
-      (* let possible_reads : Value_set.t = Mem_model.read x time m in
-      let (new_sym, new_symbols, new_assumptions) =
-        add_read_disjunction x possible_reads asmp.symbols asmp.as in
-      let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
-      Exp_output_config_set.singleton {e=(Val(new_sym),pos); m; asmp=new_assumption_set} *)
+  | Var x -> let possible_reads : Value_set.t = Mem_model.read x time m in
+      if Value_set.cardinal possible_reads == 1
+      then Value_set.fold (fun v s -> Exp_output_config_set.add {e=(Val(v), pos); m; asmp} s)
+        possible_reads Exp_output_config_set.empty
+      else let (new_sym, new_symbols, new_assumptions) =
+          add_read_disjunction x possible_reads asmp.symbols asmp.assumptions in
+        let new_assumption_set = {symbols = new_symbols; assumptions = new_assumptions} in
+        Exp_output_config_set.singleton {e=(Val(new_sym),pos); m; asmp=new_assumption_set}
   | Binop (exp1,b,exp2) ->
       let ((e1,_),(e2,_)) = (exp1, exp2) in
       match e1,e2 with
