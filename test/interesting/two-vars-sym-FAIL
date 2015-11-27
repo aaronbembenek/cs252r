@@ -1,12 +1,14 @@
 x = 0;
-/* Only fails when y <= 10 */
+/* Only fails when y < 50 */
 symbolic y;
 
 fork t1 do
   x = x + 10;
-  assert x < y;
+  x = 50;
+  assert x <= y;
 done;
 
 fork t2 do
   y = y + 20;
+  y = 50;
 done;
