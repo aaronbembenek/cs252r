@@ -32,4 +32,4 @@ test:
 clean:
 	-rm *.cmo *.cmi parse.ml parse.mli lex.ml interp
 
-.PHONY: test clean build seq weak weaker
+.PHONY: test clean build strict rpjmm pjmm
