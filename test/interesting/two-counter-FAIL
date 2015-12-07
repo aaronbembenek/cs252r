@@ -1,0 +1,15 @@
+fork t0 do
+  while i < 5 do
+    x = x + 1;
+    i = i + 1
+  done
+done;
+fork t1 do
+  while j < 5 do
+    x = x + 1;
+    j = j + 1
+  done
+done;
+join t0;
+join t1;
+assert x >= 5 

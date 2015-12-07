@@ -1,0 +1,12 @@
+/* This enters an infinite loop under the pure PJMM but terminates under the
+ * restricted PJMM. */
+
+fork t0 do
+  while x < 5 do
+    x = x + 1
+  done
+done;
+
+x = 0;
+
+join t0;
