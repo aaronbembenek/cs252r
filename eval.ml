@@ -35,10 +35,6 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
   match e with
   | Val _ -> assert false (* should never be reached *)
   | Var x -> let possible_reads : Value_set.t = Mem_model.read x time !cur_tid m in
-      (*
-      print_endline ("reading "^x);
-      Value_set.iter (fun v -> print_endline (Prettyprint.pp_exp (Val v, 0))) possible_reads;
-      *)
       if Value_set.cardinal possible_reads == 1
       then Value_set.fold (fun v s -> Exp_output_config_set.add {e=(Val(v), pos); m; asmp} s)
         possible_reads Exp_output_config_set.empty
@@ -87,10 +83,6 @@ let rec step_exp ({e=(e,pos); time; m; asmp}:exp_input_config) : Exp_output_conf
 
 let rec step_thread (s:thread_input_config) : thread_output_config list*annotation =
   let (c,pos) = s.c in
-  (*
-  print_endline (Prettyprint.pp_cmd s.c);
-  let _ = read_line () in
-  *)
   match c with
   | Skip -> assert false (* should never be reached *)
 
@@ -263,8 +255,6 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
           [r]
 
       | Eps ->
-          (* TODO we are currently not incrementing the time here. This matches
-           * the adversarial memory paper semantics but not ours *)
           List.fold_right
             (fun {c; m; asmp} a ->
               let tp'' = Thread_pool.update id (c,time) tp' in 

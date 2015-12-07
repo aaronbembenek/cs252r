@@ -1,13 +1,13 @@
 COMPILER=ocamlc
 
-weaker:
-	make build MMODEL=WEAKER
+pjmm:
+	make build MMODEL=PJMM
 
-weak:
-	make build MMODEL=WEAK
+rpjmm:
+	make build MMODEL=RPJMM
 
-sequential:
-	make build MMODEL=SEQ
+strict:
+	make build MMODEL=STRICT
 
 build:
 	$(COMPILER) -c ast.ml
