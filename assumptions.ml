@@ -1,4 +1,4 @@
-(* http://cubicle.lri.fr/alt-ergo-zero/ *)
+(* Information on Aez can be found at http://cubicle.lri.fr/alt-ergo-zero/. *)
 open Aez
 open Smt
 open Ast
@@ -13,8 +13,11 @@ exception Runtime_exception of string
 let one = T.make_int (Num.Int 1) ;;
 let zero = T.make_int (Num.Int 0) ;;
 
+(* Count of symbolic variables. Used to generate unique symbolic variable
+   names. *)
 let counter = ref 0 ;;
 
+(* Create new symbolic variable with a given name. *)
 let make_sym (x : string) (symbols : State.termMap) : value * termMap =
   let new_symbols = (if TermMap.mem x symbols
     then symbols
@@ -25,12 +28,14 @@ let make_sym (x : string) (symbols : State.termMap) : value * termMap =
   (Sym x, new_symbols)
 ;;
 
+(* Create new symbolic variable with the next available name. *)
 let get_new_sym (symbols : termMap) : value * termMap =
   let new_sym = ("_s" ^ (string_of_int !counter)) in
   counter := (!counter) + 1;
   make_sym new_sym symbols
 ;;
 
+(* Get SMT term associated with the given value. *)
 let get_term (x : value) (symbols : termMap) : Smt.Term.t =
   match x with
     Sym v -> (if TermMap.mem v symbols
@@ -39,14 +44,14 @@ let get_term (x : value) (symbols : termMap) : Smt.Term.t =
   | Conc i -> T.make_int (Num.Int i)
 ;;
 
-let rec disjunction_helper (tz : Smt.Term.t) (symbols : termMap) (v : value)
-    (acc : assumptions) : assumptions =
-  acc @ [F.make_lit F.Eq [tz; get_term v symbols]]
-;;
-
+(* Add a constraint to given assumps: (var = v1 or var = v2 or ... or var = vn)
+   where v1, v2, ..., vn are the elements of val. *)
 let add_read_disjunction (var : var) (vals : State.Value_set.t)
     (symbols : termMap) (assumps : assumptions)
     : value * termMap * assumptions = 
+  let rec disjunction_helper (tz : Smt.Term.t) (symbols : termMap) (v : value)
+      (acc : assumptions) : assumptions =
+    acc @ [F.make_lit F.Eq [tz; get_term v symbols]] in
   let (new_sym, new_symbols) = get_new_sym symbols in
   let tz = get_term new_sym new_symbols in
   let disjunction = 
@@ -54,6 +59,7 @@ let add_read_disjunction (var : var) (vals : State.Value_set.t)
   (new_sym, new_symbols, assumps @ [F.make F.Or disjunction])
 ;;
 
+(* Add a binop constraint to assumps. *)
 let add_binop_assumption (x : value) (y : value) (symbols : termMap)
     (assumps : assumptions) (b : binop) : value * termMap * assumptions =
   let tx = get_term x symbols in
@@ -83,6 +89,7 @@ let add_binop_assumption (x : value) (y : value) (symbols : termMap)
   (new_sym, new_symbols, assumps @ [assump])
 ;;
 
+(* Add an if constraint to assumps. *)
 let add_if_assumption (x : value) (b : bool) (symbols : termMap)
     (assumps : assumptions) : assumptions =
   let tx = get_term x symbols in
@@ -91,7 +98,7 @@ let add_if_assumption (x : value) (b : bool) (symbols : termMap)
   assumps @ [assump]
 ;;
 
-(* Debugging! *)
+(* Debugging function that prints SMT formulas. *)
 let rec print_formulas (assumptions : Smt.Formula.t list) : unit =
   match assumptions with
     [] -> ()
@@ -100,13 +107,12 @@ let rec print_formulas (assumptions : Smt.Formula.t list) : unit =
       print_formulas tl
 ;;
 
-let rec make_assumptions (assumptions : Smt.Formula.t list) (n : int) =
+(* Return true if the given formula is satisfiable, false otherwise. *)
+let check (assumptions : Smt.Formula.t list) : bool =
+  let rec make_assumptions (assumptions : Smt.Formula.t list) (n : int) =
   match assumptions with
     [] -> ()
-  | hd::tl -> Solver.assume ~id:n hd; make_assumptions tl (n + 1)
-;;
-
-let check (assumptions : Smt.Formula.t list) : bool =
+  | hd::tl -> Solver.assume ~id:n hd; make_assumptions tl (n + 1) in
   try
     Solver.clear ();
     make_assumptions assumptions 1;
