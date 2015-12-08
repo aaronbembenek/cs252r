@@ -1,6 +1,6 @@
 # Symbolic Execution of Concurrent Programs under Arbitrary Memory Models
 
-Authored by Aaron Bembenek and Hannah Blumberg for the Fall 2015 version of CS 252r at Harvard University.
+Authored by Aaron Bembenek and Hannah Blumberg for the [Fall 2015 version of CS 252r](http://web-static-aws.seas.harvard.edu/courses/cs252/2015fa/) at Harvard University.
 
 ## Overview
 
