@@ -1,6 +1,0 @@
-x = 0;
-if (x > 10) then {
-	return 10;
-} else {
-	return 5;
-} fi
