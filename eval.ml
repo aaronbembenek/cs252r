@@ -255,9 +255,10 @@ let step_thread_pool (s:thread_pool_config) : thread_pool_config list =
           [r]
 
       | Eps ->
+          let time' = Clock.inc id time in
           List.fold_right
             (fun {c; m; asmp} a ->
-              let tp'' = Thread_pool.update id (c,time) tp' in 
+              let tp'' = Thread_pool.update id (c,time') tp' in
               {tp=tp''; m; ls=s.ls; asmp}::a)
             oconfigs []
 
