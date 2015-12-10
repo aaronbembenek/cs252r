@@ -1,5 +1,3 @@
-(* Lexer for ??? *)
-
 {
 open Parse
 open Lexing

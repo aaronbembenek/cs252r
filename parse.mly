@@ -1,5 +1,3 @@
-/* Parser for ??? */
-
 %{
 open Ast
 open Lexing

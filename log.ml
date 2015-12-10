@@ -3,6 +3,8 @@ open Ast
 open State
 open Yojson.Basic
 
+(* Provides utilities to log special events in JSON format. *)
+
 type event =
   | Assert_fail of pos 
   | Div_by_zero of pos 

@@ -24,7 +24,7 @@ for tst_dir in tst_dirs:
     if key == "LOOP":
       print skipped 
       continue;
-    result = subprocess.check_output("%s %s 2>&1 > /dev/null" %
+    result = subprocess.check_output("%s %s 2>&1 >/dev/null" %
         (executable, os.path.join(tst_dir, tst)), shell=True)
     if (key == "OK") == (result == ""):
       print passed
